@@ -1,10 +1,11 @@
 import torchvision
+from torch.utils.data import Dataset, DataLoader
 import os
 import gzip
 import tarfile
 import gc
-from IPython.core.ultratb import AutoFormattedTB
-__ITB__ = AutoFormattedTB(mode = 'Verbose',color_scheme='LightBg', tb_offset = 1)
+# from IPython.core.ultratb import AutoFormattedTB
+# __ITB__ = AutoFormattedTB(mode = 'Verbose',color_scheme='LightBg', tb_offset = 1)
 
 class CancerDataset(Dataset):
   def __init__(self, root, download=True, size=512, train=True):
