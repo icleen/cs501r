@@ -10,9 +10,8 @@ from torch.nn.parameter import Parameter
 from tqdm import tqdm
 import pdb
 
-# assert torch.cuda.is_available() # You need to request a GPU from Runtime > Change Runtime Type
-
-from cancer_dataset import CancerDataset
+# assert torch.cuda.is_available()
+# You need to request a GPU from Runtime > Change Runtime Type
 
 
 class UNet(nn.Module):
