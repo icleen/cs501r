@@ -1,0 +1,10 @@
+{
+    "training_set_path": ".",
+    "validation_set_path": ".",
+    "model_save_path": "models/test_model.pt",
+    "network": {
+        "input_size": [3, 512, 512],
+        "output_size": [512, 512],
+        "learning_rate": 1e-4
+    }
+}
