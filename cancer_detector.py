@@ -120,7 +120,7 @@ def main():
 
       # validate every 40 batches and save the model if the validation loss is
       # lower than the lowest loss seen so far
-      if i % 40 == 0:
+      if i % 50 == 0:
         val_epoch(itr, model, val_loader, highest_IOU, log_path, model_path)
 
       gc.collect()
