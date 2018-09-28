@@ -105,6 +105,7 @@ def main():
       loss.backward()
       optimizer.step()
       preds = None
+      loss = loss.item()
       gc.collect()
 
       if doloop:

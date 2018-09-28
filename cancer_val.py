@@ -23,10 +23,11 @@ def interOverUnion(preds, y):
   # value to avoid division by 0
   # intersection will be 0 if model predicts no cancer or the target says there's none
   # union will only be 0 if model predicts no cancer in the image and the target agrees
-  eps = 0.0001
-  inter = (preds * y).sum()
-  union = (preds + y).sum() - inter
-  return (inter + eps) / (union + eps)
+  inter = ((preds * y).sum()).cpu().numpy()
+  union = ((preds + y).sum()).cpu().numpy() - inter
+  if union == 0:
+    return 1.0
+  return inter / union
 
 def main():
 
@@ -63,8 +64,8 @@ def main():
 
     if doloop:
       loop.set_description(
-        'iter: {}, acc: {:.2f}%, IOU: {:.2f}%, memory: {}'.format(
-          i, acc*100, valiou[-1], torch.cuda.memory_allocated(0) / 1e9 ) )
+        'iter: {}, acc: {:.4f}, IOU: {:.4f}, memory: {}'.format(
+          i, acc, valiou[-1], torch.cuda.memory_allocated(0) / 1e9 ) )
       loop.update(1)
 
     preds = None
