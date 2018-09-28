@@ -3,7 +3,7 @@
     "validation_set_path": ".",
     "model_save_path": "models/alt_model.pt",
     "loss_figure": "alt_losses.png",
-    "log_path": "logs/alt3_log.pth",
+    "log_path": "logs/alt_log.pth",
     "looper": false,
     "epochs": 10,
     "batch_size": 1,

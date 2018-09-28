@@ -46,7 +46,7 @@ def val_epoch(itr, model, val_loader, highest_IOU, log_path, model_path):
   print('iter: {}, IOU: {:.6f}, memory: {}'.format(
     itr, IOU, torch.cuda.memory_allocated(0) / 1e9 ) )
   save_log('valid', itr, IOU, log_path)
-  if IOU> highest_IOU:
+  if IOU > highest_IOU:
     highest_IOU = IOU
     print("Saving Best")
     dirname = os.path.dirname(model_path)
@@ -54,6 +54,8 @@ def val_epoch(itr, model, val_loader, highest_IOU, log_path, model_path):
       os.makedirs(dirname)
     torch.save(model.state_dict(), os.path.join(model_path))
   gc.collect()
+
+  return highest_IOU
 
 def main():
 
@@ -121,7 +123,7 @@ def main():
       # validate every 40 batches and save the model if the validation loss is
       # lower than the lowest loss seen so far
       if i % 50 == 0:
-        val_epoch(itr, model, val_loader, highest_IOU, log_path, model_path)
+        highest_IOU = val_epoch(itr, model, val_loader, highest_IOU, log_path, model_path)
 
       gc.collect()
       itr += 1
@@ -129,7 +131,7 @@ def main():
     if doloop:
       loop.close()
 
-  val_epoch(itr, model, val_loader, highest_IOU, log_path, model_path)
+  highest_IOU = val_epoch(itr, model, val_loader, highest_IOU, log_path, model_path)
 
 
 
