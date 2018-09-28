@@ -1,0 +1,15 @@
+{
+    "training_set_path": ".",
+    "validation_set_path": ".",
+    "model_save_path": "models/alt3_model.pt",
+    "loss_figure": "alt3_losses.png",
+    "log_path": "logs/alt3_log.pth",
+    "looper": false,
+    "epochs": 5,
+    "batch_size": 1,
+    "network": {
+        "input_size": [3, 512, 512],
+        "output_size": [512, 512],
+        "learning_rate": 1e-4
+    }
+}
