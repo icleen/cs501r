@@ -19,15 +19,17 @@ def main():
   valitrs = [int(t[1]) for t in vals]
   valloss = [float(t[2]) for t in vals]
 
-  # plt.plot(range(len(trains)), trains[:][2], label='train loss per 20 iterations')
+  print('trainloss: {}, Valid IOU: {}'.format(np.min(trainloss), np.max(valloss)))
+
   plt.plot(trainitrs, trainloss, label='train loss per 20 iterations')
-  # plt.plot(vals[:][1], vals[:][2], label='validation IOU per 50 iterations')
   plt.plot(valitrs, valloss, label='val IOU per 50 iterations')
+  plt.scatter(trainitrs[np.argmin(trainloss)], np.min(trainloss), label='lowest loss')
+  plt.scatter(valitrs[np.argmax(valloss)], np.max(valloss), label='highest IOU')
   plt.legend()
   plt.xlabel('iterations')
   plt.ylabel('loss')
   plt.savefig('loss_figure.png')
-  plt.show()
+  # plt.show()
 
 
 if __name__ == '__main__':
