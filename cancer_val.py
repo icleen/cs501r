@@ -18,6 +18,15 @@ import os
 from cancer_dataset import CancerDataset
 from cancer_model import UNet
 
+def interOverUnion(preds, y):
+  preds = torch.argmax(preds, 1)
+  # value to avoid division by 0
+  # intersection will be 0 if model predicts no cancer or the target says there's none
+  # union will only be 0 if model predicts no cancer in the image and the target agrees
+  eps = 0.0001
+  inter = (preds * y).sum()
+  union = (preds + y).sum() - inter
+  return (inter + eps) / (union + eps)
 
 def main():
 
@@ -35,6 +44,7 @@ def main():
   val_loader = DataLoader(valset, batch_size=1, pin_memory=True)
 
   valacc = []
+  valiou = []
   doloop = True
   gc.collect()
 
@@ -46,14 +56,15 @@ def main():
 
     preds = model(x)
     preds = torch.argmax(preds, 1)
-
     acc = torch.mean((y == preds).type(torch.FloatTensor))
     valacc.append(acc)
 
+    valiou.append( interOverUnion(preds, y) )
+
     if doloop:
       loop.set_description(
-        'iter: {}, acc: {:.2f}%, memory: {}'.format(
-          i, acc*100, torch.cuda.memory_allocated(0) / 1e9 ) )
+        'iter: {}, acc: {:.2f}%, IOU: {:.2f}%, memory: {}'.format(
+          i, acc*100, valiou[-1], torch.cuda.memory_allocated(0) / 1e9 ) )
       loop.update(1)
 
     preds = None
@@ -62,7 +73,7 @@ def main():
   if doloop:
     loop.close()
 
-  print('Mean Acc: {:.2f}%'.format(np.mean(valacc)*100))
+  print('Mean Acc: {:.2f}%, Mean IOU: {:.2f}%'.format(np.mean(valacc)*100, np.mean(valiou)*100))
 
 
 if __name__ == '__main__':

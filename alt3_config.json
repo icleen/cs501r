@@ -3,9 +3,10 @@
     "validation_set_path": ".",
     "model_save_path": "models/alt3_model.pt",
     "loss_figure": "alt3_losses.png",
+    "log_path": "logs/alt3_log.pth",
     "looper": false,
-    "epochs": 1,
-    "batch_size": 2,
+    "epochs": 5,
+    "batch_size": 1,
     "network": {
         "input_size": [3, 512, 512],
         "output_size": [512, 512],
