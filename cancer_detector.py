@@ -28,7 +28,7 @@ def main():
       config = json.load(f)
 
   trainset = CancerDataset(config['training_set_path'], download=False)
-  train_loader = DataLoader(trainset, batch_size=5, shuffle=True, pin_memory=True)
+  train_loader = DataLoader(trainset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
 
   valset = CancerDataset(config['validation_set_path'], download=False, train=False)
   val_loader = DataLoader(valset, batch_size=1, pin_memory=True)
@@ -39,11 +39,14 @@ def main():
   objective = nn.CrossEntropyLoss()
   optimizer = optim.Adam(model.parameters(), lr=config['network']['learning_rate'])
 
-  epochs = 100
+  epochs = config['epochs']
   losses = []
   valosses = []
   doloop = config['looper']
   lowest_loss = float('inf')
+  loss_figure = config['loss_figure']
+  model_path = config['model_save_path']
+  config = None
   gc.collect()
 
   for epoch in range(epochs):
@@ -64,6 +67,7 @@ def main():
       optimizer.step()
       preds = None
       loss = None
+      gc.collect()
 
       if doloop:
         loop.set_description(
@@ -81,10 +85,10 @@ def main():
         if valosses[-1][-1] < lowest_loss:
           lowest_loss = valosses[-1][-1]
           print("Saving Best")
-          dirname = os.path.dirname(config['model_save_path'])
+          dirname = os.path.dirname(model_path)
           if len(dirname) > 0 and not os.path.exists(dirname):
             os.makedirs(dirname)
-          torch.save(model.state_dict(), os.path.join(config['model_save_path']))
+          torch.save(model.state_dict(), os.path.join(model_path))
 
       gc.collect()
 
@@ -98,7 +102,7 @@ def main():
   plt.legend()
   plt.xlabel('iterations')
   plt.ylabel('loss')
-  plt.savefig('cancer_fig.png')
+  plt.savefig(loss_figure)
 
 
 if __name__ == '__main__':

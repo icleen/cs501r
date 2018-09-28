@@ -47,13 +47,13 @@ def main():
     preds = model(x)
     preds = torch.argmax(preds, 1)
 
-    acc = torch.mean((trainy == preds).type(torch.FloatTensor))
+    acc = torch.mean((y == preds).type(torch.FloatTensor))
     valacc.append(acc)
 
     if doloop:
       loop.set_description(
-        'iter: {}, loss: {:.6f}, memory: {}'.format(
-          i, losses[-1], torch.cuda.memory_allocated(0) / 1e9 ) )
+        'iter: {}, acc: {:.2f}%, memory: {}'.format(
+          i, acc*100, torch.cuda.memory_allocated(0) / 1e9 ) )
       loop.update(1)
 
     preds = None
@@ -62,7 +62,7 @@ def main():
   if doloop:
     loop.close()
 
-  print('Mean Acc: {}'.format(np.mean(valacc)))
+  print('Mean Acc: {:.2f}%'.format(np.mean(valacc)*100))
 
 
 if __name__ == '__main__':
