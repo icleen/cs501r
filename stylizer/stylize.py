@@ -124,9 +124,11 @@ def main():
   gramCalc = GramMatrix()
 
   vgg = VGGIntermediate(requested=requested_vals)
-  # vgg.cuda()
-  # layer = vgg(style_image.cuda())
-  layer = vgg(style_image)
+  if torch.cuda.is_available():
+    vgg.cuda()
+    layer = vgg(style_image.cuda())
+  else:
+    layer = vgg(style_image)
   style_activations = [layer[val] for val in requested_vals]
   style_grams = [gramCalc(act) for act in style_activations]
   # print('style_gram: {}'.format(style_grams[0].size()))
@@ -134,7 +136,10 @@ def main():
   style_weights = [w for _ in requested_vals]
   w = None
 
-  layer = vgg(content_image)
+  if torch.cuda.is_available():
+    layer = vgg(content_image.cuda())
+  else:
+    layer = vgg(content_image)
   content_activations = [layer[val] for val in requested_vals]
 
   # print( 'style_acts: {}, content_acts: {}'.format(len(style_activations), len(content_activations)) )
@@ -145,12 +150,15 @@ def main():
   # for act in content_activations:
   #   print('size: {}'.format(act.size()))
 
-  input_img = content_image.clone()
+  if torch.cuda.is_available():
+    input_img = content_image.clone().cuda()
+  else:
+    input_img = content_image.clone()
 
   total_objective = StylizerLoss(1, 1e3)
   sel_objective = SquaredErrorLoss()
   gram_objective = GramLoss(gramCalc)
-  optimizer = optim.Adam([input_img.requires_grad_()], lr=1e-4)
+  optimizer = optim.Adam([input_img.requires_grad_()], lr=0.1)
 
   iterations = 10
   for it in range(iterations):
@@ -174,7 +182,10 @@ def main():
       optimizer.step()
 
   # print('input_img.size(): {}'.format(input_img.size()))
-  img = input_img.squeeze(0).detach().numpy()
+  if torch.cuda.is_available():
+    img = input_img.squeeze(0).detach().cpu().numpy()
+  else:
+    img = input_img.squeeze(0).detach().numpy()
   img = np.transpose(img, (1, 2, 0))
   img = img - np.min(img)
   img = img / np.max(img)
