@@ -31,9 +31,9 @@ def interOverUnion(preds, y):
 
 def main():
 
-  config_path = 'test_config.json'
-  if len(sys.argv) > 2:
-    config_path = sys.argv[2]
+  config_path = 'configs/test_config.json'
+  if len(sys.argv) > 1:
+    config_path = sys.argv[1]
   with open(config_path) as f:
     config = json.load(f)
 
