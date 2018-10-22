@@ -63,12 +63,13 @@ def evaluate(prime_str='A', predict_len=100, temperature=0.8):
 
     return predicted
 
-n_epochs = 2000
+n_epochs = 5000
 print_every = 100
 plot_every = 10
-hidden_size = 100
+hidden_size = 1000
+predict_size = 100
 n_layers = 1
-lr = 0.005
+lr = 0.001
 
 # decoder = RNN(n_characters, hidden_size, n_characters, n_layers)
 decoder = GRUNet(n_characters, hidden_size, n_characters, n_layers)
@@ -85,8 +86,12 @@ for epoch in range(1, n_epochs + 1):
 
     if epoch % print_every == 0:
         print('[%s (%d %d%%) %.4f]' % ((time.time() - start), epoch, epoch / n_epochs * 100, loss))
-        print('predicted string:\n{}\n:The End'.format(evaluate('Wh', 100)))
+        print('predicted string:\n{}\n:The End'.format(evaluate('Wh', predict_size)))
+        # print('predicted string:\n{}\n:The End'.format(evaluate(file[:2], predict_size)))
 
     if epoch % plot_every == 0:
         all_losses.append(loss_avg / plot_every)
         loss_avg = 0
+
+with open('new_alma.txt', 'w') as f:
+    f.write(evaluate('A', 5000))

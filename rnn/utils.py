@@ -7,7 +7,7 @@ import random
 all_characters = string.printable
 n_characters = len(all_characters)
 
-file = unidecode.unidecode(open('./text_files/lotr.txt').read())
+file = unidecode.unidecode(open('./text_files/alma.txt').read())
 file_len = len(file)
 print('file_len =', file_len)
 
