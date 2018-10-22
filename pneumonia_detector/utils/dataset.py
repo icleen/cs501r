@@ -32,13 +32,15 @@ class PneuDataset(Dataset):
 
     img = torch.from_numpy(img).unsqueeze(0)
 
-    return {
-    'img': img,
-    # 'x': item[1],
-    # 'y': item[2],
-    # 'width': item[3],
-    # 'height': item[4],
-    'label': item[5],
-    }
+    return img, item[5]
+
+    # return {
+    # 'img': img,
+    # # 'x': item[1],
+    # # 'y': item[2],
+    # # 'width': item[3],
+    # # 'height': item[4],
+    # 'label': item[5],
+    # }
 
 # 0004cfab-14fd-4e49-80ba-63a80b6bddd6

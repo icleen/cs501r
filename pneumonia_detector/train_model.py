@@ -1,4 +1,4 @@
-from dataset import *
+from utils.dataset import *
 from model import *
 
 import torch
