@@ -1,0 +1,13 @@
+
+*.png
+*.PNG
+*.jpg
+*.JPG
+*.csv
+*.tsv
+*.tar.gz
+*.tar
+*.zip
+
+__pycache__/
+
