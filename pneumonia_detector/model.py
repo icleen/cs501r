@@ -40,8 +40,8 @@ class PneuNet(nn.Module):
     super(PneuNet, self).__init__()
 
     in_channels = img_shape[0]
-    assert img_shape[2] == img_shape[3]
-    width = img_shape[2]
+    assert img_shape[1] == img_shape[2]
+    width = img_shape[1]
     fcc_shape = width / pow(2, 2)
     self.fcc_shape = fcc_shape * fcc_shape * 256
 
