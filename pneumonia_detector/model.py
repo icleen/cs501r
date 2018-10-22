@@ -9,7 +9,7 @@ import pdb
 import numpy as np
 
 
-resnet18 = models.resnet18()
+# resnet18 = models.resnet18()
 
 # class Residual(nn.Module):
 #
@@ -36,13 +36,14 @@ resnet18 = models.resnet18()
 
 class PneuNet(nn.Module):
 
-  def __init__(self, img_shape):
+  def __init__(self, img_shape, classes=2):
     super(PneuNet, self).__init__()
 
     in_channels = img_shape[0]
     assert img_shape[1] == img_shape[2]
     width = img_shape[1]
-    fcc_shape = width / pow(2, 2)
+    maxpools = 2
+    fcc_shape = int(width / pow(2, maxpools))
     self.fcc_shape = fcc_shape * fcc_shape * 256
 
     self.net = nn.Sequential(
@@ -62,11 +63,11 @@ class PneuNet(nn.Module):
       nn.ReLU()
     )
 
-    self.fc1 = nn.Linear(self.fcc_shape, 1)
+    self.fc1 = nn.Linear(self.fcc_shape, classes)
 
 
   def forward(self, x):
     x = self.net(x)
     x = x.view(-1, self.fcc_shape)
     x = self.fc1(x)
-    return 1 if x > 0 else 0
+    return x

@@ -13,26 +13,27 @@ class PneuDataset(Dataset):
 
     with open(csv_file, 'r') as f:
       reader = csv.reader(f, delimiter=',', quotechar='|')
-      lines = [inst for inst in reader]
+      self.data = [inst for inst in reader]
 
-    self.data = lines[1:]
     self.csv_file = csv_file
     self.img_path = img_path
 
 
 
   def __len__(self):
-    return len(self.data)
+    return  len(self.data)
 
   def __getitem__(self, idx):
+    # item = self.data[0] # test with only the first instance
     item = self.data[idx]
     path = os.path.join(self.img_path, item[0] + '.dcm')
     img = pydicom.dcmread(path).pixel_array.astype(np.float32)
     img = img / 128.0 - 1.0
 
     img = torch.from_numpy(img).unsqueeze(0)
+    label = torch.tensor(int(item[5])).long()
 
-    return img, item[5]
+    return img, label
 
     # return {
     # 'img': img,
