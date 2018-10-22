@@ -20,38 +20,14 @@ import matplotlib.pyplot as plt
 # from tqdm import tqdm
 
 
-class StylizerLoss(nn.Module):
-  def __init__(self, alpha, beta):
-    super(StylizerLoss, self).__init__()
-    self.alpha = alpha
-    self.beta = beta
-
-  def forward(self, content_loss, style_loss):
-    return content_loss.mul(self.alpha) + style_loss.mul(self.beta)
-
-
-class SquaredErrorLoss(nn.Module):
-  def __init__(self, weight=None, size_average=None, ignore_index=-100,
-               reduce=None, reduction='elementwise_mean'):
-    self.__dict__.update(locals())
-    super(SquaredErrorLoss, self).__init__()
-
-  def forward(self, inp, targets):
-    assert inp.size(0) == targets.size(0)
-    return inp.sub(targets).pow(2).sum()/2
-
-
 class GramLoss(nn.Module):
   def __init__(self, gramCalc):
     super(GramLoss, self).__init__()
     self.gramCalc = gramCalc
 
   def forward(self, inp, target_gram):
-    nl = inp.size(0)*inp.size(1)
-    ml = inp.size(2)*inp.size(3)
     in_gram = self.gramCalc(inp)
-    assert in_gram.size() == target_gram.size()
-    return in_gram.sub(target_gram).pow(2).sum().div(4*nl*nl*ml*ml)
+    return F.mse_loss(in_gram, target_gram)
 
 
 class GramMatrix(nn.Module):
@@ -66,9 +42,8 @@ class GramMatrix(nn.Module):
     and it's easy
     """
     collapsed = mat.view(bl * nl, hl * wl)
-
     gram = torch.mm(collapsed, collapsed.t())
-    return gram
+    return gram.div(bl * nl * hl * wl)
 
 
 class VGGIntermediate(nn.Module):
@@ -93,20 +68,41 @@ class VGGIntermediate(nn.Module):
     return self.intermediates
 
 
+def export_img(img_tensor, img_path):
+  if torch.cuda.is_available():
+    img = img_tensor.squeeze(0).detach().cpu().numpy()
+  else:
+    img = img_tensor.squeeze(0).detach().numpy()
+  img = np.transpose(img, (1, 2, 0))
+  img = img - np.min(img)
+  img = img / np.max(img)
+  out = Image.fromarray((img * 255).astype(np.uint8))
+  out.save(img_path)
+
+
 def main():
+
+  out_img_file = 'output_image'
+  content_path = "content.png"
+  style_path = "style.png"
+  if len(sys.argv) > 1:
+    out_img_file = sys.argv[1].split('.png')[0]
+  if len(sys.argv) > 2:
+    content_path = sys.argv[2]
+  if len(sys.argv) > 3:
+    style_path = sys.argv[3]
 
   load_and_normalize = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((224,224)),
+    transforms.Resize((512,512)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
   ])
 
-  style_image = Image.open("style.png")
+  style_image = Image.open(style_path)
   style_image = load_and_normalize(np.array(style_image)).unsqueeze(0)
 
-  content_image = Image.open("content.png")
+  content_image = Image.open(content_path)
   content_image = load_and_normalize(np.array(content_image)).unsqueeze(0)
 
   vgg_dict = {'conv4_1': 17, 'conv5_1': 24, 'conv2_2': 7, 'relu5_2': 27,
@@ -116,82 +112,76 @@ def main():
     'maxpool5': 30, 'conv2_1': 5, 'maxpool4': 23, 'conv1_1': 0, 'relu2_1': 6,
     'relu4_2': 20, 'relu4_3': 22, 'conv3_3': 14, 'maxpool1': 4, 'maxpool2': 9,
     'relu1_1': 1, 'conv4_2': 19}
-  requested_vals = [vgg_dict['conv1_1'], vgg_dict['conv2_1'],
+  style_vals = [vgg_dict['conv1_1'], vgg_dict['conv2_1'],
     vgg_dict['conv3_1'], vgg_dict['conv4_1'], vgg_dict['conv5_1']]
-  # print(requested_vals)
-
+  content_vals = [vgg_dict['conv4_2']]
 
   gramCalc = GramMatrix()
 
-  vgg = VGGIntermediate(requested=requested_vals)
+  vgg = VGGIntermediate(requested=(style_vals+content_vals))
   if torch.cuda.is_available():
     vgg.cuda()
     layer = vgg(style_image.cuda())
   else:
     layer = vgg(style_image)
-  style_activations = [layer[val] for val in requested_vals]
+  style_activations = [layer[val].clone() for val in style_vals]
   style_grams = [gramCalc(act) for act in style_activations]
-  # print('style_gram: {}'.format(style_grams[0].size()))
-  w = 1.0/len(requested_vals)
-  style_weights = [w for _ in requested_vals]
+  w = 1.0/len(style_vals)
+  style_weights = [w for _ in style_vals]
   w = None
 
   if torch.cuda.is_available():
     layer = vgg(content_image.cuda())
   else:
     layer = vgg(content_image)
-  content_activations = [layer[val] for val in requested_vals]
+  content_activations = [layer[val].clone() for val in content_vals]
 
-  # print( 'style_acts: {}, content_acts: {}'.format(len(style_activations), len(content_activations)) )
-  # print('style:')
-  # for act in style_activations:
-  #   print('size: {}'.format(act.size()))
-  # print('content:')
-  # for act in content_activations:
-  #   print('size: {}'.format(act.size()))
-
+  input_img = content_image.clone()
   if torch.cuda.is_available():
-    input_img = content_image.clone().cuda()
-  else:
-    input_img = content_image.clone()
+    input_img = input_img.cuda()
 
-  total_objective = StylizerLoss(1, 1e3)
-  sel_objective = SquaredErrorLoss()
-  gram_objective = GramLoss(gramCalc)
+  alpha, beta = 1e-1, 1e5
+  tot_loss = 0.0
+  content_objective = F.mse_loss
+  style_objective = GramLoss(gramCalc)
   optimizer = optim.Adam([input_img.requires_grad_()], lr=0.1)
 
-  iterations = 10
+  iterations = 10000
+  print_interval = iterations / 100
+  img_interval = iterations / 10
   for it in range(iterations):
+    optimizer.zero_grad()
+
     style_loss = torch.tensor(0.0)
+    content_loss = torch.tensor(0.0)
+    if torch.cuda.is_available():
+      style_loss = style_loss.cuda()
+      content_loss = content_loss.cuda()
+
     layer = vgg(input_img)
-    input_activations = [layer[val] for val in requested_vals]
+    input_acts = [layer[val] for val in style_vals]
+    for l, in_act in enumerate(input_acts):
+      style_loss += style_objective(in_act, style_grams[l]).mul(style_weights[l])
 
-    for l, in_act in enumerate(input_activations):
-      optimizer.zero_grad()
+    input_acts = [layer[val] for val in content_vals]
+    for l, in_act in enumerate(input_acts):
+      content_loss += content_objective(in_act, content_activations[l])
 
-      style_loss.add_( gram_objective(in_act, style_grams[l]).mul(style_weights[l]) )
-      # print( 'layer {} style loss: {}'.format(l+1, style_loss) )
+    # print( 'iter {} layer {} style loss: {}'.format(it+1, l+1, style_loss) )
+    # print( 'iter {} layer {} content loss: {}'.format(it+1, l+1, content_loss) )
+    tot_loss = (alpha * content_loss) + (beta * style_loss)
 
-      content_loss = sel_objective(in_act, content_activations[l])
-      # print( 'layer {} content loss: {}'.format(l+1, content_loss) )
+    if it % print_interval == 0 and (l == 0 or l == 4):
+      print( 'iter {} layer {} total loss: {}'.format(it, l+1, tot_loss) )
 
-      tot_loss = total_objective(content_loss, style_loss)
-      print( 'iter {} layer {} total loss: {}'.format(it+1, l+1, tot_loss) )
+    if it % img_interval == 0 and (l == 0 or l == 4):
+      export_img(input_img, out_img_file+'_'+str(it)+'_temp.png')
 
-      tot_loss.backward(retain_graph=True)
-      optimizer.step()
+    tot_loss.backward(retain_graph=True)
+    optimizer.step()
 
-  # print('input_img.size(): {}'.format(input_img.size()))
-  if torch.cuda.is_available():
-    img = input_img.squeeze(0).detach().cpu().numpy()
-  else:
-    img = input_img.squeeze(0).detach().numpy()
-  img = np.transpose(img, (1, 2, 0))
-  img = img - np.min(img)
-  img = img / np.max(img)
-  # print(img.shape)
-  out = Image.fromarray((img * 255).astype(np.uint8))
-  out.save('output_image.png')
+  print( 'iter {} layer {} total loss: {}'.format(it+1, l+1, tot_loss) )
+  export_img(input_img, out_img_file+'.png')
 
 
 if __name__ == '__main__':
