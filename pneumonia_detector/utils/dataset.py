@@ -1,14 +1,18 @@
 import torch
 from torch.utils.data import Dataset
+from torchvision import transforms
 import csv
 import os
 import numpy as np
 import pydicom
+from PIL import Image
 
 
 class PneuDataset(Dataset):
 
-  def __init__(self, csv_file='data/stage_1_train_labels.csv', img_path='data/train_images'):
+  def __init__(self, csv_file='data/stage_1_train_labels.csv',
+                     img_path='data/train_images',
+                     img_resize=512):
     super(PneuDataset, self).__init__()
 
     with open(csv_file, 'r') as f:
@@ -17,6 +21,7 @@ class PneuDataset(Dataset):
 
     self.csv_file = csv_file
     self.img_path = img_path
+    self.transform = transforms.Compose([transforms.Resize(img_resize),transforms.ToTensor()])
 
 
 
@@ -27,10 +32,11 @@ class PneuDataset(Dataset):
     # item = self.data[0] # test with only the first instance
     item = self.data[idx]
     path = os.path.join(self.img_path, item[0] + '.dcm')
-    img = pydicom.dcmread(path).pixel_array.astype(np.float32)
-    img = img / 128.0 - 1.0
+    img = pydicom.dcmread(path).pixel_array.astype(np.uint8)
+    img = Image.fromarray(img)
+    img = self.transform(img)
+    # import pdb; pdb.set_trace()
 
-    img = torch.from_numpy(img).unsqueeze(0)
     label = torch.tensor(int(item[5])).long()
 
     return img, label
@@ -45,3 +51,8 @@ class PneuDataset(Dataset):
     # }
 
 # 0004cfab-14fd-4e49-80ba-63a80b6bddd6
+
+if __name__ == '__main__':
+  trainset = PneuDataset("data/trainset.csv", "data/train_images")
+  x, y = trainset[0]
+  print(x)
