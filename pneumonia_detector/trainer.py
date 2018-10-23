@@ -44,6 +44,7 @@ class Trainer(object):
     self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr)
 
     self.losses = []
+    self.vallosses = []
 
     # print(torch.cuda.memory_allocated(0) / 1e9)
 
@@ -59,7 +60,7 @@ class Trainer(object):
         preds = self.model(x)
 
         loss = self.objective(preds, y)
-        self.losses.append(loss.item())
+        self.losses.append(loss.cpu().item())
         loss.backward()
 
         self.optimizer.step()
@@ -73,7 +74,8 @@ class Trainer(object):
           print( 'iter: {}, valloss: {}, trainloss: {}'.format( itr,
             np.mean(self.losses[-self.write_interval:]),
             valloss ) )
-          self.write_out(itr, valloss)
+          self.vallosses.append(valloss)
+          self.write_out(itr)
 
         # print(torch.cuda.memory_allocated(0) / 1e9)
 
@@ -82,12 +84,12 @@ class Trainer(object):
       return [self.objective(self.model(x.cuda(async=True)), y.cuda(async=True)).cpu().item() for (x, y) in self.valloader]
     return [self.objective(self.model(x), y).cpu().item() for (x, y) in self.valloader]
 
-  def write_out(self, itr, valloss):
+  def write_out(self, itr):
     train_info = {}
     train_info['iter'] = itr
     train_info['losses'] = self.losses
-    train_info['valloss'] = valloss
-    train_info['optimizer'] = self.optimizer
+    train_info['valloss'] = self.vallosses
+    train_info['optimizer'] = self.optimizer.cpu()
     torch.save( train_info, opjoin(self.config['model']['trainer_save_path']) )
 
     torch.save( self.model.state_dict(),
