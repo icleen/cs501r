@@ -1,0 +1,18 @@
+{
+  "model": {
+    "img_shape": [1, 512, 512],
+    "classes": 2,
+    "model_save_path": "models/pneu3_model_save.pt",
+    "trainer_save_path": "logs/pneu3_log.pt"
+  },
+  "train": {
+    "learning_rate": 0.0001,
+    "iterations": 10000,
+    "write_interval": 100
+  },
+  "data": {
+    "image_path": "/fslhome/iclee141/compute/pneu_data/train_images/",
+    "train": "/fslhome/iclee141/compute/pneu_data/trainset.csv",
+    "valid": "/fslhome/iclee141/compute/pneu_data/valset.csv"
+  }
+}
