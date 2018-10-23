@@ -40,39 +40,41 @@ class PneuNet(nn.Module):
     in_channels = img_shape[0]
     assert img_shape[1] == img_shape[2]
     width = img_shape[1]
-    maxpools = 2
-    fcc_shape = int(width / pow(2, maxpools))
-    self.fcc_shape = fcc_shape * fcc_shape * 256
 
-    self.net = nn.Sequential(
-      nn.Conv2d(in_channels, 64, (3,3), padding=1, stride=1),
-      nn.ReLU(),
-      nn.Conv2d(64, 64, (3,3), padding=1, stride=1),
-      nn.ReLU(),
-      nn.MaxPool2d(2),
-      nn.Conv2d(64, 128, (3,3), padding=1, stride=1),
-      nn.ReLU(),
-      nn.Conv2d(128, 128, (3,3), padding=1, stride=1),
-      nn.ReLU(),
-      nn.MaxPool2d(2),
-      nn.Conv2d(128, 256, (3,3), padding=1, stride=1),
-      nn.ReLU(),
-      nn.Conv2d(256, 256, (3,3), padding=1, stride=1),
-      nn.ReLU()
-    )
-
-    self.fc1 = nn.Linear(self.fcc_shape, classes)
+    # maxpools = 2
+    # fcc_shape = int(width / pow(2, maxpools))
+    # self.fcc_shape = fcc_shape * fcc_shape * 256
+    # self.net = nn.Sequential(
+    #   nn.Conv2d(in_channels, 64, (3,3), padding=1, stride=1),
+    #   nn.ReLU(),
+    #   nn.Conv2d(64, 64, (3,3), padding=1, stride=1),
+    #   nn.ReLU(),
+    #   nn.MaxPool2d(2),
+    #   nn.Conv2d(64, 128, (3,3), padding=1, stride=1),
+    #   nn.ReLU(),
+    #   nn.Conv2d(128, 128, (3,3), padding=1, stride=1),
+    #   nn.ReLU(),
+    #   nn.MaxPool2d(2),
+    #   nn.Conv2d(128, 256, (3,3), padding=1, stride=1),
+    #   nn.ReLU(),
+    #   nn.Conv2d(256, 256, (3,3), padding=1, stride=1),
+    #   nn.ReLU()
+    # )
+    # self.fc1 = nn.Linear(self.fcc_shape, classes)
 
 
     maxpoolsr = 5
     fccr_shape = int(width / pow(2, maxpoolsr))
     self.fccr_shape = fccr_shape * fccr_shape * 2048
     self.resnet = resnet50(in_channels=in_channels)
+    self.avgpool = nn.AvgPool2d(7, stride=1)
     self.fcr1 = nn.Linear(self.fccr_shape, classes)
 
 
   def forward(self, x):
     out = self.resnet(x)
+    out = self.avgpool(out)
+    print(out.size())
     out = out.view(-1, self.fccr_shape)
     out = self.fcr1(out)
     return out
