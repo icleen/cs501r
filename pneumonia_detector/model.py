@@ -62,12 +62,12 @@ class PneuNet(nn.Module):
     # )
     # self.fc1 = nn.Linear(self.fcc_shape, classes)
 
-
+    avg_pool_size = 7
     maxpoolsr = 5
-    fccr_shape = int(width / pow(2, maxpoolsr))
+    fccr_shape = int(width / pow(2, maxpoolsr)) - (avg_pool_size-1)
     self.fccr_shape = fccr_shape * fccr_shape * 2048
     self.resnet = resnet50(in_channels=in_channels)
-    self.avgpool = nn.AvgPool2d(7, stride=1)
+    self.avgpool = nn.AvgPool2d(avg_pool_size, stride=1)
     self.fcr1 = nn.Linear(self.fccr_shape, classes)
 
 
