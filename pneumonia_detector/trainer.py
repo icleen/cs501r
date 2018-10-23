@@ -48,7 +48,7 @@ class Trainer(object):
     # print(torch.cuda.memory_allocated(0) / 1e9)
 
   def train(self, itr):
-    interval = len(self.trainloader) / self.write_interval
+    # interval = len(self.trainloader) / self.write_interval
     while itr < self.iterations:
       for j, (x, y) in enumerate(self.trainloader):
         if torch.cuda.is_available():

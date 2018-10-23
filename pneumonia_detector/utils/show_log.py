@@ -1,6 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
-
+import sys
 
 def main():
     if len(sys.argv) < 2:
@@ -8,9 +8,12 @@ def main():
 
     logf = sys.argv[1]
     info = {}
-    torch.load(logf, info)
+    info = torch.load(logf)
 
-    print(info.keys())
+    print('valloss: {}'.format(info['valloss']))
+
+    plt.plot(info['losses'])
+    plt.savefig('loss_graph.png')
 
 
 if __name__ == '__main__':
