@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms, utils, datasets
 from torch.nn.parameter import Parameter
-import torchvision.models as models
+# import torchvision.models as models
+from resnet import resnet50
 
 import pdb
 import numpy as np
@@ -36,7 +37,6 @@ class PneuNet(nn.Module):
 
   def __init__(self, img_shape, classes=2):
     super(PneuNet, self).__init__()
-
     in_channels = img_shape[0]
     assert img_shape[1] == img_shape[2]
     width = img_shape[1]
@@ -61,15 +61,24 @@ class PneuNet(nn.Module):
       nn.ReLU()
     )
 
-    self.resnet = models.resnet50()
-
     self.fc1 = nn.Linear(self.fcc_shape, classes)
+
+
+    maxpoolsr = 5
+    fccr_shape = int(width / pow(2, maxpoolsr))
+    self.fccr_shape = fccr_shape * fccr_shape * 2048
+    self.resnet = resnet50(in_channels=in_channels)
+    self.fcr1 = nn.Linear(self.fccr_shape, classes)
 
 
   def forward(self, x):
     out = self.resnet(x)
-    print(out.size())
-    x = self.net(x)
-    x = x.view(-1, self.fcc_shape)
-    x = self.fc1(x)
-    return x
+    out = out.view(-1, self.fccr_shape)
+    out = self.fcr1(out)
+    return out
+
+    # x = self.net(x)
+    # print(x.size())
+    # x = x.view(-1, self.fcc_shape)
+    # x = self.fc1(x)
+    # return x
