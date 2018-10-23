@@ -71,7 +71,7 @@ class Trainer(object):
         itr += 1
         if itr % self.write_interval == 0:
           valloss = np.mean(self.validate())
-          print( 'iter: {}, valloss: {}, trainloss: {}'.format( itr,
+          print( 'iter: {}, trainloss: {}, valloss: {}'.format( itr,
             np.mean(self.losses[-self.write_interval:]),
             valloss ) )
           self.vallosses.append(valloss)
@@ -89,7 +89,7 @@ class Trainer(object):
     train_info['iter'] = itr
     train_info['losses'] = self.losses
     train_info['valloss'] = self.vallosses
-    train_info['optimizer'] = self.optimizer.cpu()
+    train_info['optimizer'] = self.optimizer
     torch.save( train_info, opjoin(self.config['model']['trainer_save_path']) )
 
     torch.save( self.model.state_dict(),

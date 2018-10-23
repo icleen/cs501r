@@ -2,12 +2,12 @@
   "model": {
     "img_shape": [1, 1024, 1024],
     "classes": 2,
-    "model_save_path": "models/pneu_model_save.pt",
-    "trainer_save_path": "logs/pneu_log.pt"
+    "model_save_path": "models/pneu2_model_save.pt",
+    "trainer_save_path": "logs/pneu2_log.pt"
   },
   "train": {
     "learning_rate": 0.0001,
-    "iterations": 1000000,
+    "iterations": 10000,
     "write_interval": 100
   },
   "data": {
