@@ -1,6 +1,6 @@
 {
   "model": {
-    "img_shape": [1, 1024, 1024],
+    "img_shape": [1, 512, 512],
     "classes": 2,
     "model_save_path": "models/sample_model_save.pt",
     "trainer_save_path": "logs/sample_log.pt"

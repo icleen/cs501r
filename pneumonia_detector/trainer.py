@@ -26,9 +26,13 @@ class Trainer(object):
     self.lr = self.config['train']['learning_rate']
     self.write_interval = self.config['train']['write_interval']
 
-    trainset = PneuDataset(self.config['data']['train'], self.config['data']['image_path'])
+    trainset = PneuDataset(self.config['data']['train'],
+                           self.config['data']['image_path'],
+                           self.config['model']['img_shape'][1])
     self.trainloader = DataLoader(trainset, batch_size=1, pin_memory=True)
-    valset = PneuDataset(self.config['data']['valid'], self.config['data']['image_path'])
+    valset = PneuDataset(self.config['data']['valid'],
+                         self.config['data']['image_path'],
+                         self.config['model']['img_shape'][1])
     self.valloader = DataLoader(valset, batch_size=1, pin_memory=True)
 
     self.model = PneuNet(self.config['model']['img_shape'], self.config['model']['classes'])
