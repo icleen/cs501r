@@ -9,8 +9,6 @@ import pdb
 import numpy as np
 
 
-# resnet18 = models.resnet18()
-
 # class Residual(nn.Module):
 #
 #   def __init__(self, in_channels, out_channels, kernel_size,
@@ -63,10 +61,14 @@ class PneuNet(nn.Module):
       nn.ReLU()
     )
 
+    self.resnet = models.resnet50()
+
     self.fc1 = nn.Linear(self.fcc_shape, classes)
 
 
   def forward(self, x):
+    out = self.resnet(x)
+    print(out.size())
     x = self.net(x)
     x = x.view(-1, self.fcc_shape)
     x = self.fc1(x)
