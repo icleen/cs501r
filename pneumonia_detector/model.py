@@ -74,7 +74,7 @@ class PneuNet(nn.Module):
   def forward(self, x):
     out = self.resnet(x)
     out = self.avgpool(out)
-    print(out.size())
+    # print(out.size())
     out = out.view(-1, self.fccr_shape)
     out = self.fcr1(out)
     return out
