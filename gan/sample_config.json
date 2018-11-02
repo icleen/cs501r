@@ -1,18 +1,20 @@
 {
-  "model": {
-    "img_shape": [1, 512, 512],
-    "classes": 2,
-    "model_save_path": "models/gan_model.pt",
-    "trainer_save_path": "logs/gan_log.pt"
-  },
   "train": {
-    "learning_rate": 0.0001,
     "iterations": 10000,
+    "critic_iters": 1,
+    "batch_size": 100,
+    "learning_rate": 0.0002,
+    "z_size": 100,
+    "lambda": 10,
+    "beta1": 0.5,
+    "beta2": 0.999
+  },
+  "model": {
+    "model_save_path": "models/gan_model.pt",
+    "trainer_save_path": "logs/gan_log.pt",
     "write_interval": 100
   },
   "data": {
-    "image_path": "/fslhome/iclee141/compute/celebA/",
-    "train": "/fslhome/iclee141/compute/celebA/",
-    "valid": "/fslhome/iclee141/compute/celebA/"
+    "image_path": "/fslhome/iclee141/compute/celebA/img_align_celeba/"
   }
 }

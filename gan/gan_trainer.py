@@ -30,16 +30,15 @@ class GANTrainer(Trainer):
     self.critic_iters = config['train']['critic_iters']
     self.batch_size = config['train']['batch_size']
     self.lr = config['train']['learning_rate']
-    self.write_interval = config['train']['write_interval']
 
-    trainset = CelebaDataset()
+    trainset = CelebaDataset(config['data']['image_path'])
     self.trainloader = DataLoader(trainset, batch_size=self.batch_size, pin_memory=True)
 
-    self.z_size = config['model']['z_size']
+    self.z_size = config['train']['z_size']
     self.generator = Generator(self.z_size)
     self.descriminator = Descriminator()
 
-    lam = config['model']['lambda']
+    lam = config['train']['lambda']
     self.g_loss = GeneratorLoss(lam=lam)
     self.d_loss = DescriminatorLoss(lam=lam)
 
@@ -56,6 +55,8 @@ class GANTrainer(Trainer):
     else:
       self.dtype = torch.FloatTensor
       print("No GPU detected")
+
+    self.write_interval = config['model']['write_interval']
 
   def train(self, itr):
     # interval = len(self.trainloader) / self.write_interval
@@ -120,7 +121,7 @@ class GANTrainer(Trainer):
 
         itr += 1
         if itr % self.write_interval == 0:
-          print( 'iter: {}, dloss: {}, gloss: {}'.format( itr, dloss, gloss ) )
+          print('iter: {}, dloss: {}, gloss: {}'.format( itr, dloss, gloss ))
           self.write_out(itr)
 
         # print(torch.cuda.memory_allocated(0) / 1e9)
