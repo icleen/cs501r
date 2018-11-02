@@ -39,11 +39,15 @@ class GANTrainer(Trainer):
     self.generator = Generator(self.z_size)
     self.descriminator = Descriminator()
 
-    self.g_loss = GeneratorLoss(lam=self.lam)
-    self.d_loss = DescriminatorLoss(lam=self.lam)
+    lam = config['model']['lambda']
+    self.g_loss = GeneratorLoss(lam=lam)
+    self.d_loss = DescriminatorLoss(lam=lam)
 
     self.g_optim = optim.SGD(self.generator.parameters(), lr=self.lr)
     self.d_optim = optim.SGD(self.descriminator.parameters(), lr=self.lr)
+
+    self.dlosses = []
+    self.glosses = []
 
     if torch.cuda.is_available():
       self.model.cuda()
@@ -72,7 +76,7 @@ class GANTrainer(Trainer):
           self.d_optim.zero_grad()
           eps = np.random.uniform()
 
-          z = self.random_z()
+          z = self.random_z() # generate noise tensor z
           gen_img = self.generator(z)
 
           hat_img = eps*true_img + (1-eps)*gen_img
@@ -82,10 +86,13 @@ class GANTrainer(Trainer):
           predt = self.descriminator(true_img)
           predh = self.descriminator(hat_img)
 
-          loss = self.d_loss(predg, predt, predh)
-          # call dloss.backward() and disc_optim.step()
-
+          dloss = self.d_loss(predg, predt, predh)
+          dloss.backward()
           self.d_optim.step()
+
+          predg = None
+          predt = None
+          predh = None
 
         """train generator"""
         for p in self.descriminator.parameters():
@@ -95,31 +102,28 @@ class GANTrainer(Trainer):
           p.requires_grad = True
 
         self.g_optim.zero_grad()
-        gen_img = self.generator()
-        pred = self.descriminator(gen_img)
-        # generate noise tensor z
-        # calculate loss for gen
-        # call gloss.backward() and gen_optim.step()
 
-        preds = None
+        z = self.random_z() # generate noise tensor z
+        gen_img = self.generator(z)
+        pred = self.descriminator(gen_img)
+        # calculate loss for gen
+        gloss = self.g_loss(pred)
+        # call gloss.backward() and gen_optim.step()
+        gloss.backward()
+        self.g_optim.step()
+
+        pred = None
         gc.collect()
+
+        self.dlosses.append(dloss.cpu().item())
+        self.glosses.append(gloss.cpu().item())
 
         itr += 1
         if itr % self.write_interval == 0:
-          valloss = np.mean(self.validate())
-          print( 'iter: {}, trainloss: {}, valloss: {}'.format( itr,
-            np.mean(self.losses[-self.write_interval:]),
-            valloss ) )
-          self.vallosses.append(valloss)
+          print( 'iter: {}, dloss: {}, gloss: {}'.format( itr, dloss, gloss ) )
           self.write_out(itr)
 
         # print(torch.cuda.memory_allocated(0) / 1e9)
-
-  def validate(self):
-    if torch.cuda.is_available():
-      return [self.objective(self.model(x.cuda(async=True)), y.cuda(async=True)).cpu().item() for (x, y) in self.valloader]
-    return [self.objective(self.model(x), y).cpu().item() for (x, y) in self.valloader]
-
 
   def run(self, cont=False):
     # check to see if we should continue from an existing checkpoint
@@ -136,6 +140,18 @@ class GANTrainer(Trainer):
       z.cuda(async=True)
     return z
 
+  def write_out(self, itr):
+    train_info = {}
+    train_info['iter'] = itr
+    train_info['dlosses'] = self.dlosses
+    train_info['glosses'] = self.glosses
+    train_info['optimizer'] = self.optimizer
+    torch.save( train_info, opjoin(self.config['model']['trainer_save_path']) )
+
+    torch.save( self.model.state_dict(),
+      str(self.config['model']['model_save_path'].split('.pt')[0] + '_' + str(itr) + '.pt') )
+
+
 
 if __name__ == '__main__':
 
@@ -145,5 +161,4 @@ if __name__ == '__main__':
 
   config = sys.argv[1]
   trainer = Trainer(config)
-
   trainer.run()
