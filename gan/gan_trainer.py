@@ -63,7 +63,7 @@ class GANTrainer(Trainer):
     self.img_path = self.config['model']['image_save_path'].split('.png')[0]
 
 
-  def train(self, itr):
+  def train(self, itr=0):
     # interval = len(self.trainloader) / self.write_interval
     while itr < self.iterations:
       for j, true_img in enumerate(self.trainloader):
@@ -133,9 +133,10 @@ class GANTrainer(Trainer):
     # check to see if we should continue from an existing checkpoint
     # otherwise start from scratch
     if cont:
-      self.train(100)
+      itr = self.read_in()
+      self.train(itr)
     else:
-      self.train(0)
+      self.train()
 
   def random_z():
     z = torch.zeros((self.batch_size, self.z_size), dtype=torch.float)
@@ -159,6 +160,9 @@ class GANTrainer(Trainer):
 
     self.model.load_state_dict(torch.load(
       str(self.model_path + '_' + str(itr) + '.pt')))
+
+    self.iterations += itr
+    return itr
 
   def write_out(self, itr):
     train_info = {}
