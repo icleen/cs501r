@@ -1,4 +1,6 @@
 import torchvision
+import torch
+from torch.utils.data import Dataset, DataLoader
 
 class CelebaDataset(Dataset):
   def __init__(self, root, size=128, train=True):

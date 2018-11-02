@@ -186,6 +186,12 @@ if __name__ == '__main__':
     print('Usage: ' + sys.argv[0] + ' config')
     exit(0)
 
+  cont = False
+  if len(sys.argv) > 2:
+    info = sys.argv[2]
+    if info == 'cont':
+      cont = True
+
   config = sys.argv[1]
   trainer = Trainer(config)
-  trainer.run()
+  trainer.run(cont=cont)
