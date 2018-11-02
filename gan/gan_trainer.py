@@ -19,10 +19,9 @@ from trainer import Trainer
 from loss import DescriminatorLoss, GeneratorLoss
 
 
-class GANTrainer(Trainer):
+class GANTrainer():
   """docstring for Trainer."""
   def __init__(self, config):
-    super(Trainer, self).__init__()
     with open(config, 'r') as f:
       config = json.load(f)
     config = config
