@@ -19,6 +19,6 @@ class CelebaDataset(Dataset):
     return len(self.dataset_folder)
 
 if __name__ == '__main__':
-  dataset = CelebaDataset('/fslhome/iclee141/compute/celebA/img_align_celeba/')
+  dataset = CelebaDataset('/fslhome/iclee141/compute/celebA/test/')
   x = dataset[0]
-  print(s.size())
+  print(x.size())

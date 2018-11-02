@@ -10,12 +10,13 @@
     "beta2": 0.999
   },
   "model": {
+    "image_size": 64,
     "model_save_path": "models/gan_model.pt",
     "trainer_save_path": "logs/gan_log.pt",
     "image_save_path": "visuals/gan_img.png",
     "write_interval": 100
   },
   "data": {
-    "image_path": "/fslhome/iclee141/compute/celebA/img_align_celeba/"
+    "image_path": "/fslhome/iclee141/compute/celebA/test/"
   }
 }
