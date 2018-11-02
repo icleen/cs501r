@@ -47,6 +47,8 @@ class Generator(nn.Module):
       x = torch.zeros((self.z_size), dtype=torch.float)
       x.normal_()
       x.unsqueeze_(0) # become a pretend batch
+      if torch.cuda.is_available():
+        x.cuda(async=True)
 
     x = self.fc(x)
     x = x.view(-1, self.init_channels, self.init_size, self.init_size)
@@ -58,3 +60,9 @@ if __name__ == '__main__':
   net = Generator()
   out = net.forward()
   print(out.size())
+
+  z = torch.zeros((10, 100), dtype=torch.float)
+  z.normal_()
+  # z.unsqueeze_(0) # become a pretend batch
+  out2 = net.forward(z)
+  print(out2.size()))

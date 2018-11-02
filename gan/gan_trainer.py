@@ -11,31 +11,40 @@ import json
 import gc
 import numpy as np
 
-from utils.dataset import PneuDataset
-from model import PneuNet
+from celeb_dataset import CelebaDataset
+from generator import Generator
+from descriminator import Descriminator
+from trainer import Trainer
+from loss import DescriminatorLoss, GeneratorLoss
 
 
-class GANTrainer(object):
+class GANTrainer(Trainer):
   """docstring for Trainer."""
   def __init__(self, config):
     super(Trainer, self).__init__()
     with open(config, 'r') as f:
-      self.config = json.load(f)
+      config = json.load(f)
+    config = config
 
-    self.iterations = self.config['train']['iterations']
-    self.lr = self.config['train']['learning_rate']
-    self.write_interval = self.config['train']['write_interval']
+    self.iterations = config['train']['iterations']
+    self.critic_iters = config['train']['critic_iters']
+    self.batch_size = config['train']['batch_size']
+    self.lr = config['train']['learning_rate']
+    self.write_interval = config['train']['write_interval']
 
-    trainset = PneuDataset(self.config['data']['train'],
-                           self.config['data']['image_path'],
-                           self.config['model']['img_shape'][1])
-    self.trainloader = DataLoader(trainset, batch_size=1, pin_memory=True)
-    valset = PneuDataset(self.config['data']['valid'],
-                         self.config['data']['image_path'],
-                         self.config['model']['img_shape'][1])
-    self.valloader = DataLoader(valset, batch_size=1, pin_memory=True)
+    trainset = CelebaDataset()
+    self.trainloader = DataLoader(trainset, batch_size=self.batch_size, pin_memory=True)
 
-    self.model = PneuNet(self.config['model']['img_shape'], self.config['model']['classes'])
+    self.z_size = config['model']['z_size']
+    self.generator = Generator(self.z_size)
+    self.descriminator = Descriminator()
+
+    self.g_loss = GeneratorLoss(lam=self.lam)
+    self.d_loss = DescriminatorLoss(lam=self.lam)
+
+    self.g_optim = optim.SGD(self.generator.parameters(), lr=self.lr)
+    self.d_optim = optim.SGD(self.descriminator.parameters(), lr=self.lr)
+
     if torch.cuda.is_available():
       self.model.cuda()
       self.dtype = torch.cuda.FloatTensor
@@ -44,30 +53,53 @@ class GANTrainer(object):
       self.dtype = torch.FloatTensor
       print("No GPU detected")
 
-    self.objective = nn.CrossEntropyLoss()
-    self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr)
-
-    self.losses = []
-    self.vallosses = []
-
-    # print(torch.cuda.memory_allocated(0) / 1e9)
-
   def train(self, itr):
     # interval = len(self.trainloader) / self.write_interval
     while itr < self.iterations:
-      for j, (x, y) in enumerate(self.trainloader):
+      for j, true_img in enumerate(self.trainloader):
         if torch.cuda.is_available():
-          x, y = x.cuda(async=True), y.cuda(async=True)
+          true_img = true_img.cuda(async=True)
 
-        self.optimizer.zero_grad()
+        """train discriminator"""
+        #because you want to be able to backprop through the params in discriminator
+        for p in self.descriminator.parameters():
+          p.requires_grad = True
 
-        preds = self.model(x)
+        for p in self.generator.parameters():
+          p.requires_grad = False
 
-        loss = self.objective(preds, y)
-        self.losses.append(loss.cpu().item())
-        loss.backward()
+        for n in range(self.critic_iters):
+          self.d_optim.zero_grad()
+          eps = np.random.uniform()
 
-        self.optimizer.step()
+          z = self.random_z()
+          gen_img = self.generator(z)
+
+          hat_img = eps*true_img + (1-eps)*gen_img
+
+          # calculate disc loss: you will need autograd.grad
+          predg = self.descriminator(gen_img)
+          predt = self.descriminator(true_img)
+          predh = self.descriminator(hat_img)
+
+          loss = self.d_loss(predg, predt, predh)
+          # call dloss.backward() and disc_optim.step()
+
+          self.d_optim.step()
+
+        """train generator"""
+        for p in self.descriminator.parameters():
+          p.requires_grad = False
+
+        for p in self.generator.parameters():
+          p.requires_grad = True
+
+        self.g_optim.zero_grad()
+        gen_img = self.generator()
+        pred = self.descriminator(gen_img)
+        # generate noise tensor z
+        # calculate loss for gen
+        # call gloss.backward() and gen_optim.step()
 
         preds = None
         gc.collect()
@@ -96,6 +128,13 @@ class GANTrainer(object):
       self.train(100)
     else:
       self.train(0)
+
+  def random_z():
+    z = torch.zeros((self.batch_size, self.z_size), dtype=torch.float)
+    z.normal_() # generate noise tensor z
+    if torch.cuda.is_available():
+      z.cuda(async=True)
+    return z
 
 
 if __name__ == '__main__':
