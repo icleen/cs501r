@@ -1,6 +1,8 @@
 import torchvision
+from torchvision import transforms
 import torch
 from torch.utils.data import Dataset, DataLoader
+import os
 
 class CelebaDataset(Dataset):
   def __init__(self, root, size=128, train=True):
@@ -15,3 +17,8 @@ class CelebaDataset(Dataset):
 
   def __len__(self):
     return len(self.dataset_folder)
+
+if __name__ == '__main__':
+  dataset = CelebaDataset('/fslhome/iclee141/compute/celebA/img_align_celeba/')
+  x = dataset[0]
+  print(s.size())

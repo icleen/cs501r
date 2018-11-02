@@ -65,4 +65,4 @@ if __name__ == '__main__':
   z.normal_()
   # z.unsqueeze_(0) # become a pretend batch
   out2 = net.forward(z)
-  print(out2.size()))
+  print(out2.size())

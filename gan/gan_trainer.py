@@ -32,7 +32,7 @@ class GANTrainer(Trainer):
     self.batch_size = config['train']['batch_size']
     self.lr = config['train']['learning_rate']
 
-    trainset = CelebaDataset(config['data']['image_path'])
+    trainset = CelebaDataset(config['data']['image_path'], size=64)
     self.trainloader = DataLoader(trainset, batch_size=self.batch_size, pin_memory=True)
 
     self.z_size = config['train']['z_size']
