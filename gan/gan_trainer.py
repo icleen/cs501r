@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torchvision.utils import save_image
 
 import json
 import gc
@@ -57,6 +58,10 @@ class GANTrainer(Trainer):
       print("No GPU detected")
 
     self.write_interval = config['model']['write_interval']
+    self.train_info_path = self.config['model']['trainer_save_path']
+    self.model_path = self.config['model']['model_save_path'].split('.pt')[0]
+    self.img_path = self.config['model']['image_save_path'].split('.png')[0]
+
 
   def train(self, itr):
     # interval = len(self.trainloader) / self.write_interval
@@ -77,8 +82,7 @@ class GANTrainer(Trainer):
           self.d_optim.zero_grad()
           eps = np.random.uniform()
 
-          z = self.random_z() # generate noise tensor z
-          gen_img = self.generator(z)
+          gen_img = self.generate_img()
 
           hat_img = eps*true_img + (1-eps)*gen_img
 
@@ -104,8 +108,7 @@ class GANTrainer(Trainer):
 
         self.g_optim.zero_grad()
 
-        z = self.random_z() # generate noise tensor z
-        gen_img = self.generator(z)
+        gen_img = self.generate_img()
         pred = self.descriminator(gen_img)
         # calculate loss for gen
         gloss = self.g_loss(pred)
@@ -141,17 +144,36 @@ class GANTrainer(Trainer):
       z.cuda(async=True)
     return z
 
+  def generate_img():
+    z = self.random_z() # generate noise tensor z
+    return self.generator(z)
+
+  def read_in(self, itr=None):
+    train_info = {}
+    train_info = torch.load(self.train_info_path)
+    if itr is None:
+      itr = train_info['iter']
+    self.dlosses = train_info['dlosses']
+    self.glosses = train_info['glosses']
+    self.optimizer = train_info['optimizer']
+
+    self.model.load_state_dict(torch.load(
+      str(self.model_path + '_' + str(itr) + '.pt')))
+
   def write_out(self, itr):
     train_info = {}
     train_info['iter'] = itr
     train_info['dlosses'] = self.dlosses
     train_info['glosses'] = self.glosses
     train_info['optimizer'] = self.optimizer
-    torch.save( train_info, opjoin(self.config['model']['trainer_save_path']) )
+    torch.save( train_info, self.train_info_path )
 
     torch.save( self.model.state_dict(),
-      str(self.config['model']['model_save_path'].split('.pt')[0] + '_' + str(itr) + '.pt') )
+      str(self.model_path + '_' + str(itr) + '.pt') )
 
+    gen_img = self.generate_img()
+    gen_img = gen_img[0]
+    save_image(gen_img, str(self.img_path + '_' + str(itr) + '.png'))
 
 
 if __name__ == '__main__':
