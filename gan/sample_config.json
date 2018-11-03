@@ -1,6 +1,6 @@
 {
   "train": {
-    "iterations": 10000,
+    "iterations": 100000,
     "critic_iters": 1,
     "batch_size": 100,
     "learning_rate": 0.0002,

@@ -13,7 +13,7 @@ cd cs501r/gan/
 
 if [ "$1" != "" ]; then
     echo "python gan_trainer.py" $1
-    python gan_trainer.py $1
+    python gan_trainer.py $1 cont
 else
     echo "python gan_trainer.py sample_config.json"
     python gan_trainer.py sample_config.json
