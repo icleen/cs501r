@@ -150,6 +150,7 @@ class GANTrainer():
     # otherwise start from scratch
     if cont:
       itr = self.read_in()
+      print('continuing')
       self.train(itr)
     else:
       self.train()
@@ -174,10 +175,10 @@ class GANTrainer():
     self.d_optim = train_info['d_optimizer']
 
     self.generator.load_state_dict(torch.load(
-      str(self.generator_path + '_' + str(itr) + '.pt')))
+      str(self.generator_path + '_' + str(itr) + '.pt') ))
 
     self.descriminator.load_state_dict(torch.load(
-      str(self.descriminator_path + '_' + str(itr) + '.pt')))
+      str(self.descriminator_path + '_' + str(itr) + '.pt') ))
 
     self.iterations += itr
     return itr
