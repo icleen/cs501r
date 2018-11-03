@@ -11,3 +11,8 @@
 
 __pycache__/
 
+*.pt
+*slurm-*
+
+*log*
+
