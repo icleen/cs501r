@@ -11,7 +11,8 @@
   },
   "model": {
     "image_size": 64,
-    "model_save_path": "models/gan_model.pt",
+    "generator_save_path": "models/generator_model.pt",
+    "descriminator_save_path": "models/descriminator_model.pt",
     "trainer_save_path": "logs/gan_log.pt",
     "image_save_path": "visuals/gan_img.png",
     "write_interval": 100

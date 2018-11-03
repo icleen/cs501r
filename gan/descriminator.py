@@ -22,15 +22,27 @@ class Descriminator(nn.Module):
       nn.ReLU(),
       nn.Conv2d(512, 1024, kernel_size=3, stride=2, padding=1),
       nn.ReLU()
+      # nn.Conv2d(1024, 1024, kernel_size=3, stride=2, padding=1),
+      # nn.ReLU(),
+      # nn.Conv2d(1024, 1024, kernel_size=2, stride=1, padding=0),
+      # nn.ReLU(),
+      # nn.Conv2d(1024, 1, kernel_size=4, stride=1, padding=0)
     )
 
     out_shape = int(img_shape / pow(2, 4))
     self.linear_size = out_shape*out_shape*1024
     self.fc = nn.Linear(self.linear_size, 1)
+    # self.fc = nn.Linear(1024, 1)
 
   def forward(self, x):
     x = self.layer(x)
+    # print(x.size())
+    # print(x.size(1)*x.size(2)*x.size(3))
+    # print(self.linear_size)
     x = x.view(-1, self.linear_size)
+    # x = x.squeeze(2).squeeze(2)
+    # print(x.size())
+    #
     x = self.fc(x)
     return x
 

@@ -15,8 +15,20 @@ import numpy as np
 from celeb_dataset import CelebaDataset
 from generator import Generator
 from descriminator import Descriminator
-from trainer import Trainer
 from loss import DescriminatorLoss, GeneratorLoss
+
+
+def is_connected(y,x):
+    def recur_is_connected(fn,x):
+        if hasattr(fn,'variable'):
+            if fn.variable is x:
+                return True
+        if hasattr(fn,'next_functions'):
+            for f in fn.next_functions:
+                if recur_is_connected(f[0],x):
+                    return True
+        return False
+    return recur_is_connected(y.grad_fn,x)
 
 
 class GANTrainer():
@@ -24,7 +36,7 @@ class GANTrainer():
   def __init__(self, config):
     with open(config, 'r') as f:
       config = json.load(f)
-    config = config
+    self.config = config
 
     self.iterations = config['train']['iterations']
     self.critic_iters = config['train']['critic_iters']
@@ -40,7 +52,7 @@ class GANTrainer():
     self.descriminator = Descriminator()
 
     lam = config['train']['lambda']
-    self.g_loss = GeneratorLoss(lam=lam)
+    self.g_loss = GeneratorLoss()
     self.d_loss = DescriminatorLoss(lam=lam)
 
     self.g_optim = optim.SGD(self.generator.parameters(), lr=self.lr)
@@ -50,16 +62,18 @@ class GANTrainer():
     self.glosses = []
 
     if torch.cuda.is_available():
-      self.model.cuda()
-      self.dtype = torch.cuda.FloatTensor
+      self.generator.cuda()
+      self.descriminator.cuda()
+      self.device = torch.device("cuda")
       print("Using GPU")
     else:
-      self.dtype = torch.FloatTensor
+      self.device = torch.device("cpu")
       print("No GPU detected")
 
     self.write_interval = config['model']['write_interval']
     self.train_info_path = self.config['model']['trainer_save_path']
-    self.model_path = self.config['model']['model_save_path'].split('.pt')[0]
+    self.generator_path = self.config['model']['generator_save_path'].split('.pt')[0]
+    self.descriminator_path = self.config['model']['descriminator_save_path'].split('.pt')[0]
     self.img_path = self.config['model']['image_save_path'].split('.png')[0]
 
 
@@ -85,13 +99,17 @@ class GANTrainer():
           gen_img = self.generate_img()
 
           hat_img = eps*true_img + (1-eps)*gen_img
+          hat_img.requires_grad_()
 
           # calculate disc loss: you will need autograd.grad
           predg = self.descriminator(gen_img)
+          # print(is_connected(predg,gen_img))
           predt = self.descriminator(true_img)
+          # print(is_connected(predt,true_img))
           predh = self.descriminator(hat_img)
+          # print(is_connected(predh,hat_img))
 
-          dloss = self.d_loss(predg, predt, predh)
+          dloss = self.d_loss(predg, predt, predh, hat_img)
           dloss.backward()
           self.d_optim.step()
 
@@ -138,14 +156,12 @@ class GANTrainer():
     else:
       self.train()
 
-  def random_z():
-    z = torch.zeros((self.batch_size, self.z_size), dtype=torch.float)
+  def random_z(self):
+    z = torch.zeros((self.batch_size, self.z_size), dtype=torch.float, device=self.device)
     z.normal_() # generate noise tensor z
-    if torch.cuda.is_available():
-      z.cuda(async=True)
     return z
 
-  def generate_img():
+  def generate_img(self):
     z = self.random_z() # generate noise tensor z
     return self.generator(z)
 
@@ -158,8 +174,11 @@ class GANTrainer():
     self.glosses = train_info['glosses']
     self.optimizer = train_info['optimizer']
 
-    self.model.load_state_dict(torch.load(
-      str(self.model_path + '_' + str(itr) + '.pt')))
+    self.generator.load_state_dict(torch.load(
+      str(self.generator_path + '_' + str(itr) + '.pt')))
+
+    self.descriminator.load_state_dict(torch.load(
+      str(self.descriminator_path + '_' + str(itr) + '.pt')))
 
     self.iterations += itr
     return itr
@@ -172,8 +191,11 @@ class GANTrainer():
     train_info['optimizer'] = self.optimizer
     torch.save( train_info, self.train_info_path )
 
-    torch.save( self.model.state_dict(),
-      str(self.model_path + '_' + str(itr) + '.pt') )
+    torch.save( self.generator.state_dict(),
+      str(self.generator_path + '_' + str(itr) + '.pt') )
+
+    torch.save( self.descriminator.state_dict(),
+      str(self.descriminator_path + '_' + str(itr) + '.pt') )
 
     gen_img = self.generate_img()
     gen_img = gen_img[0]
@@ -193,5 +215,5 @@ if __name__ == '__main__':
       cont = True
 
   config = sys.argv[1]
-  trainer = Trainer(config)
+  trainer = GANTrainer(config)
   trainer.run(cont=cont)
