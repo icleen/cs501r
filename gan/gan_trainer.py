@@ -56,8 +56,8 @@ class GANTrainer():
     self.d_loss = DescriminatorLoss(lam=lam)
 
     betas = (config['train']['beta1'], config['train']['beta2'])
-    self.g_optim = optim.SGD(self.generator.parameters(), lr=self.lr, betas=betas)
-    self.d_optim = optim.SGD(self.descriminator.parameters(), lr=self.lr, betas=betas)
+    self.g_optim = optim.Adam(self.generator.parameters(), lr=self.lr, betas=betas)
+    self.d_optim = optim.Adam(self.descriminator.parameters(), lr=self.lr, betas=betas)
 
     self.dlosses = []
     self.glosses = []
