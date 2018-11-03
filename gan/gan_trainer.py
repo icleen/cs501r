@@ -97,7 +97,7 @@ class GANTrainer():
           self.d_optim.zero_grad()
           eps = np.random.uniform()
 
-          gen_img = self.generate_img()
+          gen_img = self.generate_img(batch_size=true_img.size(0))
 
           hat_img = eps*true_img + (1-eps)*gen_img
           hat_img.requires_grad_()
@@ -155,13 +155,13 @@ class GANTrainer():
     else:
       self.train()
 
-  def random_z(self):
-    z = torch.zeros((self.batch_size, self.z_size), dtype=torch.float, device=self.device)
+  def random_z(self, batch_size=100):
+    z = torch.zeros((batch_size, self.z_size), dtype=torch.float, device=self.device)
     z.normal_() # generate noise tensor z
     return z
 
-  def generate_img(self):
-    z = self.random_z() # generate noise tensor z
+  def generate_img(self,batch_size=100):
+    z = self.random_z(batch_size=batch_size) # generate noise tensor z
     return self.generator(z)
 
   def read_in(self, itr=None):
