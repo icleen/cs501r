@@ -103,11 +103,8 @@ class GANTrainer():
 
           # calculate disc loss: you will need autograd.grad
           predg = self.descriminator(gen_img)
-          # print(is_connected(predg,gen_img))
           predt = self.descriminator(true_img)
-          # print(is_connected(predt,true_img))
           predh = self.descriminator(hat_img)
-          # print(is_connected(predh,hat_img))
 
           dloss = self.d_loss(predg, predt, predh, hat_img)
           dloss.backward()
@@ -140,11 +137,11 @@ class GANTrainer():
         self.dlosses.append(dloss.cpu().item())
         self.glosses.append(gloss.cpu().item())
 
-        itr += 1
         if itr % self.write_interval == 0:
           print('iter: {}, dloss: {}, gloss: {}'.format( itr, dloss, gloss ))
           self.write_out(itr)
 
+        itr += 1
         # print(torch.cuda.memory_allocated(0) / 1e9)
 
   def run(self, cont=False):
@@ -172,7 +169,8 @@ class GANTrainer():
       itr = train_info['iter']
     self.dlosses = train_info['dlosses']
     self.glosses = train_info['glosses']
-    self.optimizer = train_info['optimizer']
+    self.g_optim = train_info['g_optimizer']
+    self.d_optim = train_info['d_optimizer']
 
     self.generator.load_state_dict(torch.load(
       str(self.generator_path + '_' + str(itr) + '.pt')))
@@ -188,7 +186,8 @@ class GANTrainer():
     train_info['iter'] = itr
     train_info['dlosses'] = self.dlosses
     train_info['glosses'] = self.glosses
-    train_info['optimizer'] = self.optimizer
+    train_info['g_optimizer'] = self.g_optim
+    train_info['d_optimizer'] = self.d_optim
     torch.save( train_info, self.train_info_path )
 
     torch.save( self.generator.state_dict(),
