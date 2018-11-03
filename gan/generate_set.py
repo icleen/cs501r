@@ -37,21 +37,7 @@ if __name__ == '__main__':
   descriminator.load_state_dict(torch.load(
     str(descriminator_path + '_' + str(itr) + '.pt') ))
 
-  z1 = np.random.randn(z_size)
-  z2 = np.random.randn(z_size)
-
-  # interpolate
-  steps = 8
-  ad = (z2 - z1)/steps
-  zs = [z1]
-  for i in range(1,steps):
-    zs.append(z1+(ad*i))
-  zs.append(z2)
-  
-
-  #z = torch.zeros((batch_size, self.z_size), dtype=torch.float, device=self.device)
-  #z.normal_()
-  for i, z in enumerate(zs):
-    z = torch.as_tensor(z, dtype=torch.float).unsqueeze(0)
-    gen_img = generator(z)
-    save_image(gen_img, 'generated_image_' + str(i) + '.png')
+  z = np.random.randn(64, z_size)
+  z = torch.as_tensor(z, dtype=torch.float)
+  gen_img = generator(z)
+  save_image(gen_img, 'generated_set.png')

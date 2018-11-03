@@ -1,16 +1,15 @@
 import sys
 import os
 from os.path import join as opjoin
+import json
+import gc
+import numpy as np
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
-
-import json
-import gc
-import numpy as np
 
 from celeb_dataset import CelebaDataset
 from generator import Generator
