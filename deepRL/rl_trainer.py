@@ -24,7 +24,6 @@ class RLTrainer():
   def __init__(self, config):
     with open(config, 'r') as f:
       config = json.load(f)
-    self.config = config
 
     self.epochs = config['train']['epochs']
     self.env_samples = config['train']['env_samples']
@@ -85,12 +84,12 @@ class RLTrainer():
       for _ in range(self.value_epochs):
         for it in dataloader:
           state, _, _, value = it
-
-          self.value_optim.zero_grad()
           pval = self.value_net(state)
           loss = self.value_loss(pval, value)
-          loss.backward()
           vloss.append(loss.cpu().item())
+
+          self.value_optim.zero_grad()
+          loss.backward()
           self.value_optim.step()
           gc.collect()
 
@@ -103,21 +102,21 @@ class RLTrainer():
       # Learn a policy
       ploss = []
       dataset = RLDataset(rollouts)
-      # dataloader = DataLoader(dataset, batch_size=self.policy_batch_size, shuffle=True, pin_memory=True)
-      dataloader = DataLoader(dataset, batch_size=5, shuffle=True, pin_memory=True)
+      dataloader = DataLoader(dataset, batch_size=self.policy_batch_size, shuffle=True, pin_memory=True)
+      # dataloader = DataLoader(dataset, batch_size=5, shuffle=True, pin_memory=True)
       for _ in range(self.policy_epochs):
         # train policy network
         for it in dataloader:
           state, action, aprob, advantage = it
+          pdist = self.policy_net(state)
+          # ratio = pdist.log_prob(action)/aprob
+          ratio = (pdist.log_prob(action) - aprob).exp()
+          loss = self.ppoloss(ratio, advantage)
+          ploss.append(loss.cpu().item())
 
           self.policy_optim.zero_grad()
-          pdist = self.policy_net(state)
-          ratio = pdist.log_prob(action)/aprob
-          loss = self.ppoloss(ratio, advantage)
           loss.backward()
-          ploss.append(loss.cpu().item())
           self.policy_optim.step()
-
           gc.collect()
       ploss = np.mean(ploss)
       self.plosses.append(ploss)
@@ -140,7 +139,6 @@ class RLTrainer():
       # rollout for a certain number of steps!
       rollout = []
       state = env.reset()
-      it = 0
       done = False
       while not done and len(rollout) < self.episode_length:
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
