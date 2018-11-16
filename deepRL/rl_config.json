@@ -1,21 +1,28 @@
 {
   "train": {
-    "iterations": 100000,
-    "critic_iters": 5,
-    "batch_size": 200,
-    "learning_rate": 0.0001,
-    "z_size": 100,
-    "lambda": 10,
-    "beta1": 0.0,
-    "beta2": 0.9
+    "epochs": 1000,
+    "env_samples": 100,
+    "episode_length": 200,
+    "gamma": 0.9,
+    "value_epochs": 2,
+    "policy_epochs": 5,
+    "batch_size": 32,
+    "policy_batch_size": 256,
+    "epsilon": 0.2,
+    "policy_lr": 0.0001,
+    "value_lr": 0.0001,
+    "policy_decay": 0.01,
+    "value_decay": 1
   },
   "model": {
-    "image_size": 64,
-    "generator_save_path": "models/generator_model2.pt",
-    "descriminator_save_path": "models/descriminator_model2.pt",
-    "trainer_save_path": "logs/gan_log2.pt",
-    "image_save_path": "visuals/gan_img2.png",
-    "write_interval": 100
+    "gym": "CartPole-v0",
+    "state_size": 4,
+    "action_size": 2,
+    "policy_save_path": "models/policy_model.pt",
+    "value_save_path": "models/value_model.pt",
+    "trainer_save_path": "logs/rl_log.pt",
+    "image_save_path": "visuals/rl_img.png",
+    "write_interval": 10
   },
   "data": {
     "image_path": "/fslhome/iclee141/compute/celebA/test/"

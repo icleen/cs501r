@@ -10,60 +10,55 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
+from torch.distributions import Categorical
 
-from celeb_dataset import CelebaDataset
-from generator import Generator
-from descriminator import Descriminator
-from loss import DescriminatorLoss, GeneratorLoss
+import gym
 
-
-def is_connected(y,x):
-    def recur_is_connected(fn,x):
-        if hasattr(fn,'variable'):
-            if fn.variable is x:
-                return True
-        if hasattr(fn,'next_functions'):
-            for f in fn.next_functions:
-                if recur_is_connected(f[0],x):
-                    return True
-        return False
-    return recur_is_connected(y.grad_fn,x)
+from dataset import RLDataset
+from model import Policy1D, Value1D
+from loss import PPOLoss
 
 
-class GANTrainer():
-  """docstring for Trainer."""
+class RLTrainer():
+  """docstring for RLTrainer."""
   def __init__(self, config):
     with open(config, 'r') as f:
       config = json.load(f)
     self.config = config
 
-    self.iterations = config['train']['iterations']
-    self.critic_iters = config['train']['critic_iters']
+    self.epochs = config['train']['epochs']
+    self.env_samples = config['train']['env_samples']
+    self.episode_length = config['train']['episode_length']
+    self.gamma = config['train']['gamma']
+    self.value_epochs = config['train']['value_epochs']
+    self.policy_epochs = config['train']['policy_epochs']
     self.batch_size = config['train']['batch_size']
-    self.lr = config['train']['learning_rate']
-    img_size = config['model']['image_size']
+    self.policy_batch_size = config['train']['policy_batch_size']
+    epsilon = config['train']['epsilon']
 
-    trainset = CelebaDataset(config['data']['image_path'], size=img_size)
-    self.trainloader = DataLoader(trainset, batch_size=self.batch_size, pin_memory=True)
+    self.env = gym.make(config['model']['gym'])
 
-    self.z_size = config['train']['z_size']
-    self.generator = Generator(self.z_size)
-    self.descriminator = Descriminator()
+    state_size = config['model']['state_size']
+    action_size = config['model']['action_size']
+    self.policy_net = Policy1D(state_size, action_size)
+    self.value_net = Value1D(state_size)
 
-    lam = config['train']['lambda']
-    self.g_loss = GeneratorLoss()
-    self.d_loss = DescriminatorLoss(lam=lam)
+    self.value_loss = nn.MSELoss()
+    self.ppoloss = PPOLoss(epsilon)
 
-    betas = (config['train']['beta1'], config['train']['beta2'])
-    self.g_optim = optim.Adam(self.generator.parameters(), lr=self.lr, betas=betas)
-    self.d_optim = optim.Adam(self.descriminator.parameters(), lr=self.lr, betas=betas)
+    policy_lr = config['train']['policy_lr']
+    value_lr = config['train']['value_lr']
+    policy_decay = config['train']['policy_decay']
+    value_decay = config['train']['value_decay']
+    self.policy_optim = optim.Adam(self.policy_net.parameters(), lr=policy_lr, weight_decay=policy_decay)
+    self.value_optim = optim.Adam(self.value_net.parameters(), lr=value_lr, weight_decay=value_decay)
 
-    self.dlosses = []
-    self.glosses = []
+    self.plosses = []
+    self.vlosses = []
 
     if torch.cuda.is_available():
-      self.generator.cuda()
-      self.descriminator.cuda()
+      self.policy_net.cuda()
+      self.value_net.cuda()
       self.device = torch.device("cuda")
       print("Using GPU")
     else:
@@ -71,78 +66,118 @@ class GANTrainer():
       print("No GPU detected")
 
     self.write_interval = config['model']['write_interval']
-    self.train_info_path = self.config['model']['trainer_save_path']
-    self.generator_path = self.config['model']['generator_save_path'].split('.pt')[0]
-    self.descriminator_path = self.config['model']['descriminator_save_path'].split('.pt')[0]
-    self.img_path = self.config['model']['image_save_path'].split('.png')[0]
+    # self.train_info_path = config['model']['trainer_save_path']
+    # self.policy_path = config['model']['policy_save_path'].split('.pt')[0]
+    # self.value_path = config['model']['value_save_path'].split('.pt')[0]
 
 
   def train(self, itr=0):
-    # interval = len(self.trainloader) / self.write_interval
-    while itr < self.iterations:
-      for j, true_img in enumerate(self.trainloader):
-        if torch.cuda.is_available():
-          true_img = true_img.cuda(async=True)
-
-        """train discriminator"""
-        #because you want to be able to backprop through the params in discriminator
-        for p in self.descriminator.parameters():
-          p.requires_grad = True
-
-        for p in self.generator.parameters():
-          p.requires_grad = False
-
-        for n in range(self.critic_iters):
-          self.d_optim.zero_grad()
-          eps = np.random.uniform()
-
-          gen_img = self.generate_img(batch_size=true_img.size(0))
-
-          hat_img = eps*true_img + (1-eps)*gen_img
-          hat_img.requires_grad_()
-
-          # calculate disc loss: you will need autograd.grad
-          predg = self.descriminator(gen_img)
-          predt = self.descriminator(true_img)
-          predh = self.descriminator(hat_img)
-
-          dloss = self.d_loss(predg, predt, predh, hat_img)
-          dloss.backward()
-          self.d_optim.step()
-
-          predg = None
-          predt = None
-          predh = None
-
-        """train generator"""
-        for p in self.descriminator.parameters():
-          p.requires_grad = False
-
-        for p in self.generator.parameters():
-          p.requires_grad = True
-
-        self.g_optim.zero_grad()
-
-        gen_img = self.generate_img()
-        pred = self.descriminator(gen_img)
-        # calculate loss for gen
-        gloss = self.g_loss(pred)
-        # call gloss.backward() and gen_optim.step()
-        gloss.backward()
-        self.g_optim.step()
-
-        pred = None
+    env = self.env
+    for i in range(self.epochs):
+      # generate rollouts
+      rollouts = []
+      standing_len = 0.0
+      for p in self.policy_net.parameters():
+        p.requires_grad = False
+      for _ in range(self.env_samples):
+        # don't forget to reset the environment at the beginning of each episode!
+        # rollout for a certain number of steps!
+        rollout = []
+        state = env.reset()
+        it = 0
+        done = False
+        while not done and len(rollout) < self.episode_length:
+          state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+          probs = self.policy_net(state)
+          dist = Categorical(probs)
+          action = dist.sample()
+          tp = [state.squeeze(), action.to(self.device), probs.squeeze()[action]]
+          action = action.squeeze().cpu().numpy()
+          # next_state, reward, done, info
+          state, reward, done, _ = env.step(action)
+          tp.append(torch.FloatTensor([reward]).to(self.device))
+          rollout.append(tp)
+        rollouts.append(rollout)
+        standing_len += len(rollout)
         gc.collect()
 
-        self.dlosses.append(dloss.cpu().item())
-        self.glosses.append(gloss.cpu().item())
+      for p in self.policy_net.parameters():
+        p.requires_grad = True
+      print('avg standing time:', standing_len / self.env_samples)
+      rollouts = self.calculate_values(rollouts)
+      gc.collect()
 
-        if itr % self.write_interval == 0:
-          print('iter: {}, dloss: {}, gloss: {}'.format( itr, dloss, gloss ))
-          self.write_out(itr)
+      # Approximate the value function
+      vloss = []
+      dataset = RLDataset(rollouts)
+      dataloader = DataLoader(dataset, batch_size=self.policy_batch_size, shuffle=True, pin_memory=True)
+      for _ in range(self.value_epochs):
+        for it in dataloader:
+          state, _, _, value = it
 
-        itr += 1
-        # print(torch.cuda.memory_allocated(0) / 1e9)
+          self.value_optim.zero_grad()
+          pval = self.value_net(state)
+          loss = self.value_loss(pval, value)
+          loss.backward()
+          vloss.append(loss.cpu().numpy())
+          self.value_optim.step()
+
+          gc.collect()
+      vloss = np.mean(vloss)
+      self.vlosses.append(vloss)
+
+
+      rollouts = self.calculate_advantages(rollouts)
+      # Learn a policy
+      ploss = []
+      dataset = RLDataset(rollouts)
+      dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True)
+      for _ in range(self.policy_epochs):
+        # train policy network
+        for it in dataloader:
+          state, action, aprob, advantage = it
+
+          self.policy_optim.zero_grad()
+          pdist = self.policy_net(state)
+          ratio = pdist[action]/aprob
+          loss = self.ppoloss(ratio, advantage)
+          loss.backward()
+          ploss.append(loss.cpu().numpy())
+          self.policy_optim.step()
+
+          gc.collect()
+      ploss = np.mean(ploss)
+      self.plosses.append(ploss)
+
+      if (itr+i) % self.write_interval == 0:
+        print('iter: {}, vloss: {}, ploss: {}'.format( itr+i, vloss, ploss ))
+        self.write_out(itr+i)
+
+      # print(torch.cuda.memory_allocated(0) / 1e9)
+
+  def calculate_values(self, rollouts):
+    for k in range(len(rollouts)):
+      for i in range(len(rollouts[k])):
+        gamma = 1.0
+        value = 0.0
+        for j in range(i,len(rollouts[k])):
+          value += rollouts[k][j][-1] * gamma
+          gamma *= self.gamma
+          # print('value: {}, gamma: {}'.format(value, gamma))
+        rollouts[k][i][-1] = value
+    return rollouts
+
+  def calculate_advantages(self, rollouts):
+    for p in self.value_net.parameters():
+      p.requires_grad = False
+    for i in range(len(rollouts)):
+      for j in range(len(rollouts[i])):
+        state, _, _, value = rollouts[i][j]
+        pval = self.value_net(state)
+        rollouts[i][j][-1] = pval - value
+    for p in self.value_net.parameters():
+      p.requires_grad = True
+    return rollouts
 
   def run(self, cont=False):
     # check to see if we should continue from an existing checkpoint
@@ -154,52 +189,45 @@ class GANTrainer():
     else:
       self.train()
 
-  def random_z(self, batch_size=100):
-    z = torch.zeros((batch_size, self.z_size), dtype=torch.float, device=self.device)
-    z.normal_() # generate noise tensor z
-    return z
-
-  def generate_img(self,batch_size=100):
-    z = self.random_z(batch_size=batch_size) # generate noise tensor z
-    return self.generator(z)
-
   def read_in(self, itr=None):
-    train_info = {}
-    train_info = torch.load(self.train_info_path)
-    if itr is None:
-      itr = train_info['iter']
-    self.dlosses = train_info['dlosses']
-    self.glosses = train_info['glosses']
-    self.g_optim = train_info['g_optimizer']
-    self.d_optim = train_info['d_optimizer']
-
-    self.generator.load_state_dict(torch.load(
-      str(self.generator_path + '_' + str(itr) + '.pt') ))
-
-    self.descriminator.load_state_dict(torch.load(
-      str(self.descriminator_path + '_' + str(itr) + '.pt') ))
-
-    self.iterations += itr
-    return itr
+    pass
+    # train_info = {}
+    # train_info = torch.load(self.train_info_path)
+    # if itr is None:
+    #   itr = train_info['iter']
+    # self.dlosses = train_info['dlosses']
+    # self.glosses = train_info['glosses']
+    # self.g_optim = train_info['g_optimizer']
+    # self.d_optim = train_info['d_optimizer']
+    #
+    # self.generator.load_state_dict(torch.load(
+    #   str(self.generator_path + '_' + str(itr) + '.pt') ))
+    #
+    # self.descriminator.load_state_dict(torch.load(
+    #   str(self.descriminator_path + '_' + str(itr) + '.pt') ))
+    #
+    # self.iterations += itr
+    # return itr
 
   def write_out(self, itr):
-    train_info = {}
-    train_info['iter'] = itr
-    train_info['dlosses'] = self.dlosses
-    train_info['glosses'] = self.glosses
-    train_info['g_optimizer'] = self.g_optim
-    train_info['d_optimizer'] = self.d_optim
-    torch.save( train_info, self.train_info_path )
-
-    torch.save( self.generator.state_dict(),
-      str(self.generator_path + '_' + str(itr) + '.pt') )
-
-    torch.save( self.descriminator.state_dict(),
-      str(self.descriminator_path + '_' + str(itr) + '.pt') )
-
-    gen_img = self.generate_img()
-    gen_img = gen_img[0]
-    save_image(gen_img, str(self.img_path + '_' + str(itr) + '.png'))
+    pass
+    # train_info = {}
+    # train_info['iter'] = itr
+    # train_info['dlosses'] = self.dlosses
+    # train_info['glosses'] = self.glosses
+    # train_info['g_optimizer'] = self.g_optim
+    # train_info['d_optimizer'] = self.d_optim
+    # torch.save( train_info, self.train_info_path )
+    #
+    # torch.save( self.generator.state_dict(),
+    #   str(self.generator_path + '_' + str(itr) + '.pt') )
+    #
+    # torch.save( self.descriminator.state_dict(),
+    #   str(self.descriminator_path + '_' + str(itr) + '.pt') )
+    #
+    # gen_img = self.generate_img()
+    # gen_img = gen_img[0]
+    # save_image(gen_img, str(self.img_path + '_' + str(itr) + '.png'))
 
 
 if __name__ == '__main__':
@@ -215,5 +243,5 @@ if __name__ == '__main__':
       cont = True
 
   config = sys.argv[1]
-  trainer = GANTrainer(config)
+  trainer = RLTrainer(config)
   trainer.run(cont=cont)

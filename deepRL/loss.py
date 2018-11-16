@@ -1,30 +1,14 @@
 import torch
 import torch.nn as nn
 
-class DescriminatorLoss(nn.Module):
-  """docstring for DescriminatorLoss."""
-  def __init__(self, lam):
-    super(DescriminatorLoss, self).__init__()
-    self.lam = lam
-    if torch.cuda.is_available():
-      self.device = torch.device("cuda")
-    else:
-      self.device = torch.device("cpu")
+class PPOLoss(nn.Module):
+  """docstring for PPOLoss."""
+  def __init__(self, epsilon):
+    super(PPOLoss, self).__init__()
+    self.epsilon = epsilon
 
-  def forward(self, predg, predt, predh, xhat):
-    loss = torch.autograd.grad(predh, xhat,
-      grad_outputs=torch.ones((predh.size(0), 1),
-      device=self.device), create_graph=True)[0]
-    loss = loss.view(-1, loss.size(1)*loss.size(2)*loss.size(3))
-    loss = self.lam*(loss.norm(p=2, dim=1)-1).pow(2)
-    loss = predg - predt + loss
+  def forward(self, ratio, advantage):
+    loss = ratio * advantage
+    clip = ratio.clamp(1-self.epsilon, 1+self.epsilon) * advantage
+    loss = torch.min(loss, clip)
     return loss.mean()
-
-
-class GeneratorLoss(nn.Module):
-  """docstring for GeneratorLoss."""
-  def __init__(self):
-    super(GeneratorLoss, self).__init__()
-
-  def forward(self, pred):
-    return -1 * pred.mean()
