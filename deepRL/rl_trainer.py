@@ -84,6 +84,7 @@ class RLTrainer():
       for _ in range(self.value_epochs):
         for it in dataloader:
           state, _, _, value = it
+          state, value = state.to(self.device), value.to(self.device)
           pval = self.value_net(state)
           loss = self.value_loss(pval, value)
           vloss.append(loss.cpu().item())
@@ -108,9 +109,12 @@ class RLTrainer():
         # train policy network
         for it in dataloader:
           state, action, aprob, advantage = it
+          state, action = state.to(self.device), action.to(self.device)
+          aprob, advantage = aprob.to(self.device), advantage.to(self.device)
           pdist = self.policy_net(state)
           # ratio = pdist.log_prob(action)/aprob
-          ratio = (pdist.log_prob(action) - aprob).exp()
+          # ratio = (pdist.log_prob(action) - aprob).exp()
+          ratio = pdist[torch.arange(action.size(0), dtype=torch.long), action]/aprob
           loss = self.ppoloss(ratio, advantage)
           ploss.append(loss.cpu().item())
 
@@ -142,13 +146,14 @@ class RLTrainer():
       done = False
       while not done and len(rollout) < self.episode_length:
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        # probs = self.policy_net(state)
-        # dist = Categorical(probs)
-        # action = dist.sample().squeeze()
-        # tp = [state.squeeze(), action.to(self.device), probs.squeeze()[action]]
-        dist = self.policy_net(state)
+        probs = self.policy_net(state).squeeze()
+        dist = Categorical(probs)
         action = dist.sample().squeeze()
-        tp = [state.squeeze(), action.to(self.device), dist.log_prob(action).squeeze()]
+        # input(action)
+        tp = [state.squeeze().cpu(), action.cpu(), dist.log_prob(action).squeeze().cpu()]
+        # dist = self.policy_net(state)
+        # action = dist.sample().squeeze()
+        # tp = [state.squeeze(), action.to(self.device), dist.log_prob(action).squeeze()]
         action = action.cpu().numpy()
         # next_state, reward, done, info
         state, reward, done, _ = env.step(action)
@@ -184,8 +189,9 @@ class RLTrainer():
     for i in range(len(rollouts)):
       for j in range(len(rollouts[i])):
         state, _, _, value = rollouts[i][j]
+        state, value = state.to(self.device), value.to(self.device)
         pval = self.value_net(state)
-        rollouts[i][j][-1] = pval - value
+        rollouts[i][j][-1] = (pval - value).cpu()
     for p in self.value_net.parameters():
       p.requires_grad = True
     return rollouts

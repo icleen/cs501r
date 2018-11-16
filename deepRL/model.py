@@ -30,8 +30,8 @@ class Policy1D(nn.Module):
 
   def forward(self, x):
     x = self.layer(x)
-    return Categorical(x)
-    # return x
+    # return Categorical(x)
+    return x
 
 
 class Value1D(nn.Module):

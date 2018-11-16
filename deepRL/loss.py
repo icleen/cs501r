@@ -11,4 +11,4 @@ class PPOLoss(nn.Module):
     loss = ratio * advantage
     clip = ratio.clamp(1-self.epsilon, 1+self.epsilon) * advantage
     loss = torch.min(loss, clip)
-    return loss.mean()
+    return -1*loss.mean()
