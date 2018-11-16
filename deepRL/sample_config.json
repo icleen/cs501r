@@ -1,0 +1,23 @@
+{
+  "train": {
+    "iterations": 100000,
+    "critic_iters": 1,
+    "batch_size": 100,
+    "learning_rate": 0.0002,
+    "z_size": 100,
+    "lambda": 10,
+    "beta1": 0.5,
+    "beta2": 0.999
+  },
+  "model": {
+    "image_size": 64,
+    "generator_save_path": "models/generator_model.pt",
+    "descriminator_save_path": "models/descriminator_model.pt",
+    "trainer_save_path": "logs/gan_log.pt",
+    "image_save_path": "visuals/gan_img.png",
+    "write_interval": 100
+  },
+  "data": {
+    "image_path": "/fslhome/iclee141/compute/celebA/test/"
+  }
+}
