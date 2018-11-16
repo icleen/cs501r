@@ -40,6 +40,7 @@ class RLTrainer():
 
     state_size = config['model']['state_size']
     action_size = config['model']['action_size']
+    self.action_size = action_size
     self.policy_net = Policy1D(state_size, action_size)
     self.value_net = Value1D(state_size)
 
@@ -55,6 +56,7 @@ class RLTrainer():
 
     self.plosses = []
     self.vlosses = []
+    self.stand_time = []
 
     if torch.cuda.is_available():
       self.policy_net.cuda()
@@ -66,51 +68,20 @@ class RLTrainer():
       print("No GPU detected")
 
     self.write_interval = config['model']['write_interval']
-    # self.train_info_path = config['model']['trainer_save_path']
-    # self.policy_path = config['model']['policy_save_path'].split('.pt')[0]
-    # self.value_path = config['model']['value_save_path'].split('.pt')[0]
+    self.train_info_path = config['model']['trainer_save_path']
+    self.policy_path = config['model']['policy_save_path'].split('.pt')[0]
+    self.value_path = config['model']['value_save_path'].split('.pt')[0]
 
 
   def train(self, itr=0):
-    env = self.env
     for i in range(self.epochs):
       # generate rollouts
-      rollouts = []
-      standing_len = 0.0
-      for p in self.policy_net.parameters():
-        p.requires_grad = False
-      for _ in range(self.env_samples):
-        # don't forget to reset the environment at the beginning of each episode!
-        # rollout for a certain number of steps!
-        rollout = []
-        state = env.reset()
-        it = 0
-        done = False
-        while not done and len(rollout) < self.episode_length:
-          state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-          probs = self.policy_net(state)
-          dist = Categorical(probs)
-          action = dist.sample()
-          tp = [state.squeeze(), action.to(self.device), probs.squeeze()[action]]
-          action = action.squeeze().cpu().numpy()
-          # next_state, reward, done, info
-          state, reward, done, _ = env.step(action)
-          tp.append(torch.FloatTensor([reward]).to(self.device))
-          rollout.append(tp)
-        rollouts.append(rollout)
-        standing_len += len(rollout)
-        gc.collect()
-
-      for p in self.policy_net.parameters():
-        p.requires_grad = True
-      print('avg standing time:', standing_len / self.env_samples)
-      rollouts = self.calculate_values(rollouts)
-      gc.collect()
+      rollouts = self.get_rollouts()
 
       # Approximate the value function
       vloss = []
       dataset = RLDataset(rollouts)
-      dataloader = DataLoader(dataset, batch_size=self.policy_batch_size, shuffle=True, pin_memory=True)
+      dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True)
       for _ in range(self.value_epochs):
         for it in dataloader:
           state, _, _, value = it
@@ -119,10 +90,11 @@ class RLTrainer():
           pval = self.value_net(state)
           loss = self.value_loss(pval, value)
           loss.backward()
-          vloss.append(loss.cpu().numpy())
+          vloss.append(loss.cpu().item())
           self.value_optim.step()
-
           gc.collect()
+
+          # input('{}, {}, {}'.format(pval, value, loss.cpu().item()))
       vloss = np.mean(vloss)
       self.vlosses.append(vloss)
 
@@ -131,7 +103,8 @@ class RLTrainer():
       # Learn a policy
       ploss = []
       dataset = RLDataset(rollouts)
-      dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True)
+      # dataloader = DataLoader(dataset, batch_size=self.policy_batch_size, shuffle=True, pin_memory=True)
+      dataloader = DataLoader(dataset, batch_size=5, shuffle=True, pin_memory=True)
       for _ in range(self.policy_epochs):
         # train policy network
         for it in dataloader:
@@ -139,10 +112,10 @@ class RLTrainer():
 
           self.policy_optim.zero_grad()
           pdist = self.policy_net(state)
-          ratio = pdist[action]/aprob
+          ratio = pdist.log_prob(action)/aprob
           loss = self.ppoloss(ratio, advantage)
           loss.backward()
-          ploss.append(loss.cpu().numpy())
+          ploss.append(loss.cpu().item())
           self.policy_optim.step()
 
           gc.collect()
@@ -150,10 +123,50 @@ class RLTrainer():
       self.plosses.append(ploss)
 
       if (itr+i) % self.write_interval == 0:
-        print('iter: {}, vloss: {}, ploss: {}'.format( itr+i, vloss, ploss ))
+        print('iter: {}, avg stand time: {}, vloss: {}, ploss: {}'.format(
+          itr+i, self.stand_time[-1], vloss, ploss ))
         self.write_out(itr+i)
 
       # print(torch.cuda.memory_allocated(0) / 1e9)
+
+  def get_rollouts(self):
+    env = self.env
+    rollouts = []
+    standing_len = 0.0
+    for p in self.policy_net.parameters():
+      p.requires_grad = False
+    for _ in range(self.env_samples):
+      # don't forget to reset the environment at the beginning of each episode!
+      # rollout for a certain number of steps!
+      rollout = []
+      state = env.reset()
+      it = 0
+      done = False
+      while not done and len(rollout) < self.episode_length:
+        state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        # probs = self.policy_net(state)
+        # dist = Categorical(probs)
+        # action = dist.sample().squeeze()
+        # tp = [state.squeeze(), action.to(self.device), probs.squeeze()[action]]
+        dist = self.policy_net(state)
+        action = dist.sample().squeeze()
+        tp = [state.squeeze(), action.to(self.device), dist.log_prob(action).squeeze()]
+        action = action.cpu().numpy()
+        # next_state, reward, done, info
+        state, reward, done, _ = env.step(action)
+        tp.append(torch.FloatTensor([reward]).to(self.device))
+        rollout.append(tp)
+      rollouts.append(rollout)
+      standing_len += len(rollout)
+      gc.collect()
+
+    for p in self.policy_net.parameters():
+      p.requires_grad = True
+    self.stand_time.append(standing_len / self.env_samples)
+    # print('avg standing time:', self.stand_time[-1])
+    rollouts = self.calculate_values(rollouts)
+    gc.collect()
+    return rollouts
 
   def calculate_values(self, rollouts):
     for k in range(len(rollouts)):
@@ -190,44 +203,40 @@ class RLTrainer():
       self.train()
 
   def read_in(self, itr=None):
-    pass
-    # train_info = {}
-    # train_info = torch.load(self.train_info_path)
-    # if itr is None:
-    #   itr = train_info['iter']
-    # self.dlosses = train_info['dlosses']
-    # self.glosses = train_info['glosses']
-    # self.g_optim = train_info['g_optimizer']
-    # self.d_optim = train_info['d_optimizer']
-    #
-    # self.generator.load_state_dict(torch.load(
-    #   str(self.generator_path + '_' + str(itr) + '.pt') ))
-    #
-    # self.descriminator.load_state_dict(torch.load(
-    #   str(self.descriminator_path + '_' + str(itr) + '.pt') ))
-    #
-    # self.iterations += itr
-    # return itr
+    train_info = {}
+    train_info = torch.load(self.train_info_path)
+    if itr is None:
+      itr = train_info['iter']
+    self.plosses = train_info['plosses']
+    self.vlosses = train_info['vlosses']
+    self.stand_time = train_info['stand_time']
+    self.policy_optim = train_info['policy_optimizer']
+    self.value_optim = train_info['value_optimizer']
+
+    self.policy_net.load_state_dict(torch.load(
+      str(self.policy_path + '_' + str(itr) + '.pt') ))
+
+    self.value_net.load_state_dict(torch.load(
+      str(self.value_path + '_' + str(itr) + '.pt') ))
+
+    self.epochs += itr
+    return itr
 
   def write_out(self, itr):
-    pass
-    # train_info = {}
-    # train_info['iter'] = itr
-    # train_info['dlosses'] = self.dlosses
-    # train_info['glosses'] = self.glosses
-    # train_info['g_optimizer'] = self.g_optim
-    # train_info['d_optimizer'] = self.d_optim
-    # torch.save( train_info, self.train_info_path )
-    #
-    # torch.save( self.generator.state_dict(),
-    #   str(self.generator_path + '_' + str(itr) + '.pt') )
-    #
-    # torch.save( self.descriminator.state_dict(),
-    #   str(self.descriminator_path + '_' + str(itr) + '.pt') )
-    #
-    # gen_img = self.generate_img()
-    # gen_img = gen_img[0]
-    # save_image(gen_img, str(self.img_path + '_' + str(itr) + '.png'))
+    train_info = {}
+    train_info['iter'] = itr
+    train_info['plosses'] = self.plosses
+    train_info['vlosses'] = self.vlosses
+    train_info['stand_time'] = self.stand_time
+    train_info['policy_optimizer'] = self.policy_optim
+    train_info['value_optimizer'] = self.value_optim
+    torch.save( train_info, self.train_info_path )
+
+    torch.save( self.policy_net.state_dict(),
+      str(self.policy_path + '_' + str(itr) + '.pt') )
+
+    torch.save( self.value_net.state_dict(),
+      str(self.value_path + '_' + str(itr) + '.pt') )
 
 
 if __name__ == '__main__':
