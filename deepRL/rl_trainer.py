@@ -157,7 +157,7 @@ class RLTrainer():
         action = action.cpu().numpy()
         # next_state, reward, done, info
         state, reward, done, _ = env.step(action)
-        tp.append(torch.FloatTensor([reward]).to(self.device))
+        tp.append(torch.FloatTensor([reward]))
         rollout.append(tp)
       rollouts.append(rollout)
       standing_len += len(rollout)
