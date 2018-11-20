@@ -174,11 +174,11 @@ class RLTrainer():
   def calculate_values(self, rollouts):
     for k in range(len(rollouts)):
       for i in range(len(rollouts[k])):
-        gamma = 1.0
+        # gamma = 1.0
         value = 0.0
         for j in range(i,len(rollouts[k])):
-          value += rollouts[k][j][-1] * gamma
-          gamma *= self.gamma
+          value = rollouts[k][j][-1] + value * self.gamma
+          # gamma *= self.gamma
           # print('value: {}, gamma: {}'.format(value, gamma))
         rollouts[k][i][-1] = value
     return rollouts
