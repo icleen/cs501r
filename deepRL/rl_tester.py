@@ -4,7 +4,6 @@ from os.path import join as opjoin
 import json
 import gc
 import numpy as np
-import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -14,6 +13,7 @@ from torchvision.utils import save_image
 from torch.distributions import Categorical
 
 import gym
+import matplotlib.pyplot as plt
 
 from dataset import RLDataset
 from model import Policy1D, Value1D
@@ -61,7 +61,8 @@ class RLTrainer():
     done = False
     while not done and it < self.episode_length:
       state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-      dist = self.policy_net(state)
+      probs = self.policy_net(state).squeeze()
+      dist = Categorical(probs)
       action = dist.sample().squeeze().cpu().numpy()
       state, reward, done, _ = env.step(action)
       value += reward
