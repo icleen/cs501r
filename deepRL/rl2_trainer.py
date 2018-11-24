@@ -134,15 +134,15 @@ class RLTrainer():
         probs_np = probs.cpu().detach().numpy()
         action_one_hot = np.random.multinomial(1, probs_np)
         action = np.argmax(action_one_hot)
-        tp = [state.squeeze().cpu(), probs, torch.LongTensor([action])]
+        tp = [state.squeeze().cpu(), probs.cpu(), torch.LongTensor([action]).cpu()]
         # next_state, reward, done, info
         state, reward, done, _ = env.step(action)
-        tp.append(torch.FloatTensor([reward]))
+        tp.append(torch.FloatTensor([reward]).cpu())
         rollout.append(tp)
       value = 0.0
       for i in reversed(range(len(rollout))):
         value = rollout[i][-1] + self.gamma * value
-        rollout[i].append(value)
+        rollout[i].append(value.cpu())
       rollouts.append(rollout)
       standing_len += len(rollout)
       gc.collect()
