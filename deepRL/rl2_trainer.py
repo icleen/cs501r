@@ -47,14 +47,11 @@ class RLTrainer():
     self.value_loss = nn.MSELoss()
     self.ppoloss = PPOLoss(epsilon)
 
-    # policy_lr = config['train']['policy_lr']
-    # value_lr = config['train']['value_lr']
-    # policy_decay = config['train']['policy_decay']
-    # value_decay = config['train']['value_decay']
-    # self.policy_optim = optim.Adam(self.policy_net.parameters(), lr=policy_lr, weight_decay=policy_decay)
-    # self.value_optim = optim.Adam(self.value_net.parameters(), lr=value_lr, weight_decay=value_decay)
+    betas = (config['train']['betas1'], config['train']['betas2'])
+    weight_decay = config['train']['weight_decay']
+    lr = config['train']['lr']
     params = chain(self.policy_net.parameters(), self.value_net.parameters())
-    self.optim = optim.Adam(params, lr=1e-3, betas=(0.9, 0.999), weight_decay=0.01)
+    self.optim = optim.Adam(params, lr=lr, betas=betas, weight_decay=weight_decay)
 
     self.plosses = []
     self.vlosses = []
@@ -85,7 +82,6 @@ class RLTrainer():
       dataset = RLDataset(rollouts)
       dataloader = DataLoader(dataset, batch_size=self.policy_batch_size,
                               shuffle=True, pin_memory=True)
-      # dataloader = DataLoader(dataset, batch_size=5, shuffle=True, pin_memory=True)
       for _ in range(self.policy_epochs):
         # train policy network
         for state, aprob, action, reward, value in dataloader:
@@ -179,8 +175,9 @@ class RLTrainer():
     self.plosses = train_info['plosses']
     self.vlosses = train_info['vlosses']
     self.stand_time = train_info['stand_time']
-    self.policy_optim = train_info['policy_optimizer']
-    self.value_optim = train_info['value_optimizer']
+    self.optim = train_info['optimizer']
+    # self.policy_optim = train_info['policy_optimizer']
+    # self.value_optim = train_info['value_optimizer']
 
     self.policy_net.load_state_dict(torch.load(
       str(self.policy_path + '_' + str(itr) + '.pt') ))
@@ -197,8 +194,9 @@ class RLTrainer():
     train_info['plosses'] = self.plosses
     train_info['vlosses'] = self.vlosses
     train_info['stand_time'] = self.stand_time
-    train_info['policy_optimizer'] = self.policy_optim
-    train_info['value_optimizer'] = self.value_optim
+    train_info['optimizer'] = self.optim
+    # train_info['policy_optimizer'] = self.policy_optim
+    # train_info['value_optimizer'] = self.value_optim
     torch.save( train_info, self.train_info_path )
 
     torch.save( self.policy_net.state_dict(),

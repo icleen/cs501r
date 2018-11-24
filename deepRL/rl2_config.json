@@ -9,8 +9,12 @@
     "batch_size": 32,
     "policy_batch_size": 256,
     "epsilon": 0.2,
+    "lr": 0.0001,
     "policy_lr": 0.0001,
     "value_lr": 0.0001,
+    "betas1": 0.9,
+    "betas2": 0.999,
+    "weight_decay": 0.01,
     "policy_decay": 0.01,
     "value_decay": 1
   },
