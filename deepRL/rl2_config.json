@@ -1,0 +1,29 @@
+{
+  "train": {
+    "epochs": 1000,
+    "env_samples": 100,
+    "episode_length": 200,
+    "gamma": 0.9,
+    "value_epochs": 2,
+    "policy_epochs": 5,
+    "batch_size": 32,
+    "policy_batch_size": 256,
+    "epsilon": 0.2,
+    "policy_lr": 0.0001,
+    "value_lr": 0.0001,
+    "policy_decay": 0.01,
+    "value_decay": 1
+  },
+  "model": {
+    "gym": "CartPole-v0",
+    "state_size": 4,
+    "action_size": 2,
+    "policy_save_path": "models/policy2_model.pt",
+    "value_save_path": "models/value2_model.pt",
+    "trainer_save_path": "logs/rl2_log.pt",
+    "write_interval": 25
+  },
+  "data": {
+    "image_path": "/fslhome/iclee141/compute/celebA/test/"
+  }
+}
