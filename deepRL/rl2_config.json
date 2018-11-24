@@ -3,7 +3,7 @@
     "epochs": 1000,
     "env_samples": 100,
     "episode_length": 200,
-    "gamma": 0.9,
+    "gamma": 0.99,
     "value_epochs": 2,
     "policy_epochs": 5,
     "batch_size": 32,

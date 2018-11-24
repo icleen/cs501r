@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from itertools import chain
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 from torch.distributions import Categorical
@@ -46,12 +47,14 @@ class RLTrainer():
     self.value_loss = nn.MSELoss()
     self.ppoloss = PPOLoss(epsilon)
 
-    policy_lr = config['train']['policy_lr']
-    value_lr = config['train']['value_lr']
-    policy_decay = config['train']['policy_decay']
-    value_decay = config['train']['value_decay']
-    self.policy_optim = optim.Adam(self.policy_net.parameters(), lr=policy_lr, weight_decay=policy_decay)
-    self.value_optim = optim.Adam(self.value_net.parameters(), lr=value_lr, weight_decay=value_decay)
+    # policy_lr = config['train']['policy_lr']
+    # value_lr = config['train']['value_lr']
+    # policy_decay = config['train']['policy_decay']
+    # value_decay = config['train']['value_decay']
+    # self.policy_optim = optim.Adam(self.policy_net.parameters(), lr=policy_lr, weight_decay=policy_decay)
+    # self.value_optim = optim.Adam(self.value_net.parameters(), lr=value_lr, weight_decay=value_decay)
+    params = chain(self.policy_net.parameters(), self.value_net.parameters())
+    self.optim = optim.Adam(params, lr=1e-3, betas=(0.9, 0.999), weight_decay=0.01)
 
     self.plosses = []
     self.vlosses = []
@@ -85,7 +88,7 @@ class RLTrainer():
       # dataloader = DataLoader(dataset, batch_size=5, shuffle=True, pin_memory=True)
       for _ in range(self.policy_epochs):
         # train policy network
-        for state, aprob, action, value, reward in dataloader:
+        for state, aprob, action, reward, value in dataloader:
           state, aprob = state.to(self.device), aprob.to(self.device)
           action, value = action.to(self.device), value.to(self.device)
 
@@ -102,10 +105,10 @@ class RLTrainer():
           ploss = self.ppoloss(ratio, advantage)
           plosses.append(ploss.cpu().item())
 
-          self.policy_optim.zero_grad()
+          self.optim.zero_grad()
           loss = ploss + vloss
           loss.backward()
-          self.policy_optim.step()
+          self.optim.step()
           gc.collect()
       self.vlosses.append(np.mean(vlosses))
       self.plosses.append(np.mean(plosses))
@@ -135,7 +138,7 @@ class RLTrainer():
         probs_np = probs.cpu().detach().numpy()
         action_one_hot = np.random.multinomial(1, probs_np)
         action = np.argmax(action_one_hot)
-        tp = [state.squeeze().cpu(), probs, action]
+        tp = [state.squeeze().cpu(), probs, torch.LongTensor([action])]
         # next_state, reward, done, info
         state, reward, done, _ = env.step(action)
         tp.append(torch.FloatTensor([reward]))
@@ -143,7 +146,7 @@ class RLTrainer():
       value = 0.0
       for i in reversed(range(len(rollout))):
         value = rollout[i][-1] + self.gamma * value
-        rollout.append(value)
+        rollout[i].append(value)
       rollouts.append(rollout)
       standing_len += len(rollout)
       gc.collect()
