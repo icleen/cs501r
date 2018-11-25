@@ -22,14 +22,13 @@
     "gym": "CartPole-v0",
     "state_size": 4,
     "action_size": 2,
-    "policy_save_path": "models/policy2_model.pt",
-    "value_save_path": "models/value2_model.pt",
-    "trainer_save_path": "logs/rl2_log.pt",
-    "gif_save_path": "visuals/rl2_gif.gif",
-    "graph_save_path": "visuals/rl2_graph.png",
+    "hidden_size": 100,
+    "hidden_layers": 5,
+    "policy_save_path": "models/mtcar_policy.pt",
+    "value_save_path": "models/mtcar_value.pt",
+    "trainer_save_path": "logs/mtcar_log.pt",
+    "gif_save_path": "visuals/mtcar_gif.gif",
+    "graph_save_path": "visuals/mtcar_graph.png",
     "write_interval": 5
-  },
-  "data": {
-    "image_path": "/fslhome/iclee141/compute/celebA/test/"
   }
 }
