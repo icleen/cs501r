@@ -57,7 +57,7 @@ class RLTrainer():
 
     self.plosses = []
     self.vlosses = []
-    self.stand_time = []
+    self.avg_reward = []
 
     if torch.cuda.is_available():
       self.policy_net.cuda()
@@ -115,8 +115,8 @@ class RLTrainer():
       self.plosses.append(np.mean(plosses))
 
       if (itr+i) % self.write_interval == 0:
-        print('iter: {}, avg stand time: {}, vloss: {}, ploss: {}'.format(
-          itr+i, self.stand_time[-1], vloss, ploss ))
+        print('iter: {}, avg reward: {}, vloss: {}, ploss: {}'.format(
+          itr+i, self.avg_reward[-1], vloss, ploss ))
         self.write_out(itr+i)
         self.make_gif(itr, rollouts[0])
 
@@ -131,8 +131,12 @@ class RLTrainer():
     for _ in range(self.env_samples):
       # don't forget to reset the environment at the beginning of each episode!
       # rollout for a certain number of steps!
+      avg_rw = 0.0
       rollout = []
       state = env.reset()
+      # print(state)
+      # print(env.action_space)
+      # input('waiting...')
       done = False
       while not done and len(rollout) < self.episode_length:
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -143,6 +147,7 @@ class RLTrainer():
         tp = [state.squeeze().cpu(), probs.cpu(), torch.LongTensor([action]).cpu()]
         # next_state, reward, done, info
         state, reward, done, _ = env.step(action)
+        avg_rw += reward
         tp.append(torch.FloatTensor([reward]).cpu())
         rollout.append(tp)
       value = 0.0
@@ -150,13 +155,12 @@ class RLTrainer():
         value = rollout[i][-1] + self.gamma * value
         rollout[i].append(value.cpu())
       rollouts.append(rollout)
-      standing_len += len(rollout)
       gc.collect()
 
     for p in self.policy_net.parameters():
       p.requires_grad = True
-    self.stand_time.append(standing_len / self.env_samples)
-    # print('avg standing time:', self.stand_time[-1])
+    self.avg_reward.append(avg_rw / self.env_samples)
+    # print('avg standing time:', self.avg_reward[-1])
 
     return rollouts
 
@@ -180,7 +184,7 @@ class RLTrainer():
       itr = train_info['iter']
     self.plosses = train_info['plosses']
     self.vlosses = train_info['vlosses']
-    self.stand_time = train_info['stand_time']
+    self.avg_reward = train_info['avg_reward']
     self.optim = train_info['optimizer']
     # self.policy_optim = train_info['policy_optimizer']
     # self.value_optim = train_info['value_optimizer']
@@ -199,7 +203,7 @@ class RLTrainer():
     train_info['iter'] = itr
     train_info['plosses'] = self.plosses
     train_info['vlosses'] = self.vlosses
-    train_info['stand_time'] = self.stand_time
+    train_info['stand_time'] = self.avg_reward
     train_info['optimizer'] = self.optim
     # train_info['policy_optimizer'] = self.policy_optim
     # train_info['value_optimizer'] = self.value_optim
@@ -214,7 +218,7 @@ class RLTrainer():
     if itr > 2:
       plt.plot(self.vlosses[2:], label='value loss')
       plt.plot(self.plosses[2:], label='policy loss')
-      plt.plot(self.stand_time[2:], label='stand time')
+      plt.plot(self.avg_reward[2:], label='stand time')
       plt.legend()
       plt.xlabel('epochs')
       plt.ylabel('loss')
