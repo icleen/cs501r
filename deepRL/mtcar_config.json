@@ -2,7 +2,7 @@
   "train": {
     "epochs": 1000,
     "env_samples": 100,
-    "episode_length": 200,
+    "episode_length": 500,
     "gamma": 0.99,
     "value_epochs": 2,
     "policy_epochs": 5,

@@ -199,7 +199,7 @@ class RLTrainer():
       itr = train_info['iter']
     self.plosses = train_info['plosses']
     self.vlosses = train_info['vlosses']
-    self.avg_reward = train_info['avg_reward']
+    self.avg_reward = train_info['stand_time']
     self.optim = train_info['optimizer']
     # self.policy_optim = train_info['policy_optimizer']
     # self.value_optim = train_info['value_optimizer']
@@ -218,7 +218,7 @@ class RLTrainer():
     train_info['iter'] = itr
     train_info['plosses'] = self.plosses
     train_info['vlosses'] = self.vlosses
-    train_info['stand_time'] = self.avg_reward
+    train_info['avg_reward'] = self.avg_reward
     train_info['optimizer'] = self.optim
     # train_info['policy_optimizer'] = self.policy_optim
     # train_info['value_optimizer'] = self.value_optim
