@@ -25,7 +25,7 @@
     "policy_save_path": "models/policy2_model.pt",
     "value_save_path": "models/value2_model.pt",
     "trainer_save_path": "logs/rl2_log.pt",
-    "write_interval": 25
+    "write_interval": 10
   },
   "data": {
     "image_path": "/fslhome/iclee141/compute/celebA/test/"

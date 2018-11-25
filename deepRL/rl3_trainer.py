@@ -17,7 +17,7 @@ from torch.distributions import Categorical
 
 from env_factory import *
 
-from dataset import RLDataset
+from dataset import RLDataset, ExperienceDataset
 from model import Policy1D, Value1D
 from loss import PPOLoss
 
@@ -63,21 +63,6 @@ def _run_envs(env, embedding_net, policy, experience_queue, reward_queue, num_ro
       reward_queue.put(episode_reward)
 
 
-class ExperienceDataset(Dataset):
-    def __init__(self, experience):
-        super(ExperienceDataset, self).__init__()
-        self._exp = []
-        for x in experience:
-            self._exp.extend(x)
-        self._length = len(self._exp)
-
-    def __getitem__(self, index):
-        return self._exp[index]
-
-    def __len__(self):
-        return self._length
-
-
 class RLTrainer():
   """docstring for RLTrainer."""
   def __init__(self, config):
@@ -110,6 +95,8 @@ class RLTrainer():
 
     self.value_loss = nn.MSELoss()
     self.ppoloss = PPOLoss(epsilon)
+    self.ppo_low_bnd = 1 - epsilon
+    self.ppo_up_bnd = 1 + epsilon
 
     betas = (config['train']['betas1'], config['train']['betas2'])
     weight_decay = config['train']['weight_decay']
@@ -158,8 +145,6 @@ class RLTrainer():
 
       # Collect the experience
       rollouts = list(experience_queue.queue)
-      # avg_r = sum(reward_queue.queue) / reward_queue.qsize()
-      # loop.set_description('avg reward: % 6.2f' % (avg_r))
       self.stand_time.append(sum(reward_queue.queue) / reward_queue.qsize())
 
       # Update the policy
@@ -172,18 +157,13 @@ class RLTrainer():
       # Learn a policy
       vlosses = []
       plosses = []
-      # dataset = RLDataset(rollouts)
-      # dataloader = DataLoader(dataset, batch_size=self.policy_batch_size,
-      #                         shuffle=True, pin_memory=True)
       for _ in range(self.policy_epochs):
         # train policy network
         for state, aprob, action, reward, value in dataloader:
           state = _prepare_tensor_batch(state, self.device)
           aprob = _prepare_tensor_batch(aprob, self.device)
-          # state, aprob = state.to(self.device), aprob.to(self.device)
           action = _prepare_tensor_batch(action, self.device)
           value = _prepare_tensor_batch(value, self.device).unsqueeze(1)
-          # action, value = action.to(self.device), value.to(self.device)
 
           pdist = self.policy_net(state)
           clik = self.multinomial_likelihood(pdist, action)
@@ -191,12 +171,10 @@ class RLTrainer():
           ratio = (clik / olik)
 
           pval = self.value_net(state)
-          # print('pred: {}, actual: {}'.format(pval.size(), value.size()))
-          # input('waiting...')
           vloss = self.value_loss(pval, value)
           vlosses.append(vloss.cpu().item())
 
-          advantage = pval - value
+          advantage = value - pval.detach()
           ploss = self.ppoloss(ratio, advantage)
           plosses.append(ploss.cpu().item())
 

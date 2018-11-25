@@ -97,7 +97,7 @@ class RLTrainer():
           vloss = self.value_loss(pval, value)
           vlosses.append(vloss.cpu().item())
 
-          advantage = pval - value
+          advantage = value - pval.detach()
           ploss = self.ppoloss(ratio, advantage)
           plosses.append(ploss.cpu().item())
 

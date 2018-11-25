@@ -5,13 +5,10 @@ class PPOLoss(nn.Module):
   """docstring for PPOLoss."""
   def __init__(self, epsilon):
     super(PPOLoss, self).__init__()
-    self.epsilon = epsilon
+    self.ppo_low_bnd = 1 - epsilon
+    self.ppo_up_bnd = 1 + epsilon
 
   def forward(self, ratio, advantage):
     loss = ratio * advantage
-    clip = ratio.clamp(1-self.epsilon, 1+self.epsilon) * advantage
-    loss = torch.min(loss, clip)
-    return -1*loss.mean()
-    # lhs = ratio * advantage
-    # rhs = torch.clamp(ratio, ppo_lower_bound, ppo_upper_bound) * advantage
-    # policy_loss = -torch.mean(torch.min(lhs, rhs))
+    clip = torch.clamp(ratio, self.ppo_low_bnd, self.ppo_up_bnd) * advantage
+    return -torch.mean(torch.min(loss, clip))
