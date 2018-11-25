@@ -24,11 +24,11 @@
     "action_size": 2,
     "hidden_size": 100,
     "hidden_layers": 5,
-    "policy_save_path": "models/mtcar_policy.pt",
-    "value_save_path": "models/mtcar_value.pt",
-    "trainer_save_path": "logs/mtcar_log.pt",
-    "gif_save_path": "visuals/mtcar_gif.gif",
-    "graph_save_path": "visuals/mtcar_graph.png",
+    "policy_save_path": "models/cartpole_policy.pt",
+    "value_save_path": "models/cartpole_value.pt",
+    "trainer_save_path": "logs/cartpole_log.pt",
+    "gif_save_path": "visuals/cartpole_gif.gif",
+    "graph_save_path": "visuals/cartpole_graph.png",
     "write_interval": 5
   }
 }
