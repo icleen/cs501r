@@ -42,9 +42,15 @@ class RLTrainer():
 
     state_size = config['model']['state_size']
     action_size = config['model']['action_size']
+    hidden_size = config['model']['hidden_size']
+    layer_size = config['model']['hidden_layers']
     self.action_size = action_size
-    self.policy_net = Policy1D(state_size, action_size)
-    self.value_net = Value1D(state_size)
+    self.policy_net = Policy1D(state_size, action_size,
+                              hidden_size=hidden_size,
+                              layers=layer_size)
+    self.value_net = Value1D(state_size,
+                            hidden_size=hidden_size,
+                            layers=layer_size)
 
     self.value_loss = nn.MSELoss()
     self.ppoloss = PPOLoss(epsilon)
@@ -161,11 +167,21 @@ class RLTrainer():
       p.requires_grad = True
     self.avg_reward.append(avg_rw / self.env_samples)
     # print('avg standing time:', self.avg_reward[-1])
-
     return rollouts
 
   def multinomial_likelihood(self, dist, idx):
     return dist[range(dist.shape[0]), idx.long()[:, 0]].unsqueeze(1)
+
+  def test(self):
+    env = self.env
+    state = env.reset()
+    for _ in range(1000):
+      env.render()
+      probs = self.policy_net(state)
+      probs_np = probs.cpu().detach().numpy()
+      action_one_hot = np.random.multinomial(1, probs_np)
+      action = np.argmax(action_one_hot)
+      state, reward, done, info = env.step(action)
 
   def run(self, cont=False):
     # check to see if we should continue from an existing checkpoint

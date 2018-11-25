@@ -22,6 +22,8 @@
     "gym": "Acrobot-v1",
     "state_size": 6,
     "action_size": 3,
+    "hidden_size": 100,
+    "hidden_layers": 5,
     "policy_save_path": "models/acrobat_policy.pt",
     "value_save_path": "models/acrobat_value.pt",
     "trainer_save_path": "logs/acrobat_log.pt",

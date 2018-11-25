@@ -10,23 +10,18 @@ import numpy as np
 
 class Policy1D(nn.Module):
   """docstring for Policy1D."""
-  def __init__(self, state_size=4, action_size=2):
+  def __init__(self, state_size=4, action_size=2, hidden_size=100, layers=2):
     super(Policy1D, self).__init__()
 
-    self.layer = nn.Sequential(
-      nn.Linear(state_size, 100),
-      nn.ReLU(),
-      nn.Linear(100, 100),
-      nn.ReLU(),
-      nn.Linear(100, 100),
-      nn.ReLU(),
-      # nn.Linear(100, 100),
-      # nn.ReLU(),
-      # nn.Linear(100, 100),
-      # nn.ReLU(),
-      nn.Linear(100, action_size),
-      nn.Softmax(dim=1)
-    )
+    modules = []
+    modules.append(nn.Linear(state_size, hidden_size))
+    modules.append(nn.ReLU())
+    for n in range(layers):
+      modules.append(nn.Linear(hidden_size, hidden_size))
+      modules.append(nn.ReLU())
+    modules.append(nn.Linear(hidden_size, action_size))
+    modules.append(nn.Softmax(dim=1))
+    self.layer = nn.Sequential(*modules)
 
   def forward(self, x):
     x = self.layer(x)
@@ -36,22 +31,26 @@ class Policy1D(nn.Module):
 
 class Value1D(nn.Module):
   """docstring for Value1D."""
-  def __init__(self, state_size=4):
+  def __init__(self, state_size=4, hidden_size=100, layers=2):
     super(Value1D, self).__init__()
 
-    self.layer = nn.Sequential(
-      nn.Linear(state_size, 100),
-      nn.ReLU(),
-      nn.Linear(100, 100),
-      nn.ReLU(),
-      nn.Linear(100, 100),
-      nn.ReLU(),
-      # nn.Linear(100, 100),
-      # nn.ReLU(),
-      # nn.Linear(100, 100),
-      # nn.ReLU(),
-      nn.Linear(100, 1)
-    )
+    # self.layer = nn.Sequential(
+    #   nn.Linear(state_size, 100),
+    #   nn.ReLU(),
+    #   nn.Linear(100, 100),
+    #   nn.ReLU(),
+    #   nn.Linear(100, 100),
+    #   nn.ReLU(),
+    #   nn.Linear(100, 1)
+    # )
+    modules = []
+    modules.append(nn.Linear(state_size, hidden_size))
+    modules.append(nn.ReLU())
+    for n in range(layers):
+      modules.append(nn.Linear(hidden_size, hidden_size))
+      modules.append(nn.ReLU())
+    modules.append(nn.Linear(hidden_size, 1))
+    self.layer = nn.Sequential(*modules)
 
   def forward(self, x):
     x = self.layer(x)
