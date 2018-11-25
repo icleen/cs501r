@@ -25,6 +25,8 @@
     "policy_save_path": "models/policy3_model.pt",
     "value_save_path": "models/value3_model.pt",
     "trainer_save_path": "logs/rl3_log.pt",
+    "gif_save_path": "visuals/rl3_gif.gif",
+    "graph_save_path": "visuals/rl3_graph.png",
     "write_interval": 10
   },
   "data": {

@@ -8,12 +8,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from itertools import chain
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 from torch.distributions import Categorical
 
 import gym
+import imageio
+from itertools import chain
 
 from dataset import RLDataset
 from model import Policy1D, Value1D
@@ -70,12 +71,15 @@ class RLTrainer():
     self.train_info_path = config['model']['trainer_save_path']
     self.policy_path = config['model']['policy_save_path'].split('.pt')[0]
     self.value_path = config['model']['value_save_path'].split('.pt')[0]
+    self.gif_path = config['model']['gif_save_path'].split('.gif')[0]
+    self.graph_path = config['model']['graph_save_path']
 
 
   def train(self, itr=0):
     for i in range(self.epochs):
       # generate rollouts
       rollouts = self.get_rollouts()
+
       # Learn a policy
       vlosses = []
       plosses = []
@@ -113,6 +117,7 @@ class RLTrainer():
         print('iter: {}, avg stand time: {}, vloss: {}, ploss: {}'.format(
           itr+i, self.stand_time[-1], vloss, ploss ))
         self.write_out(itr+i)
+        self.make_gif(itr, rollouts[0])
 
       # print(torch.cuda.memory_allocated(0) / 1e9)
 
@@ -204,6 +209,26 @@ class RLTrainer():
 
     torch.save( self.value_net.state_dict(),
       str(self.value_path + '_' + str(itr) + '.pt') )
+
+    if itr > 2:
+      plt.plot(self.vlosses[2:], label='value loss')
+      plt.plot(self.plosses[2:], label='policy loss')
+      plt.plot(self.stand_time[2:], label='stand time')
+      plt.legend()
+      plt.xlabel('epochs')
+      plt.ylabel('loss')
+      plt.savefig(self.graph_path)
+
+
+  def make_gif(self, itr, rollout):
+    pass
+    # Make gifs
+    # with imageio.get_writer(str(self.gif_path + '_' + str(itr) + '.gif'),
+    #                         mode='I', duration=1 / 30) as writer:
+    #   for x in rollout:
+    #     x = x[0].numpy()
+    #     input(x)
+    #     writer.append_data((x * 255).astype(np.uint8))
 
 
 if __name__ == '__main__':
