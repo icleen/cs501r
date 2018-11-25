@@ -131,13 +131,12 @@ class RLTrainer():
   def get_rollouts(self):
     env = self.env
     rollouts = []
-    standing_len = 0.0
+    avg_rw = 0.0
     for p in self.policy_net.parameters():
       p.requires_grad = False
     for _ in range(self.env_samples):
       # don't forget to reset the environment at the beginning of each episode!
       # rollout for a certain number of steps!
-      avg_rw = 0.0
       rollout = []
       state = env.reset()
       # print(state)
