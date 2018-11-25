@@ -237,12 +237,14 @@ class RLTrainer():
       plt.xlabel('epochs')
       plt.ylabel('loss')
       plt.savefig(str(self.graph_path + '_loss.png'))
+      plt.clf()
 
       plt.plot(self.avg_reward[2:], label='rewards')
       plt.legend()
       plt.xlabel('epochs')
       plt.ylabel('rewards')
       plt.savefig(str(self.graph_path + '_reward.png'))
+      plt.clf()
 
 
   def make_gif(self, itr, rollout):
