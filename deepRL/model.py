@@ -34,15 +34,6 @@ class Value1D(nn.Module):
   def __init__(self, state_size=4, hidden_size=100, layers=2):
     super(Value1D, self).__init__()
 
-    # self.layer = nn.Sequential(
-    #   nn.Linear(state_size, 100),
-    #   nn.ReLU(),
-    #   nn.Linear(100, 100),
-    #   nn.ReLU(),
-    #   nn.Linear(100, 100),
-    #   nn.ReLU(),
-    #   nn.Linear(100, 1)
-    # )
     modules = []
     modules.append(nn.Linear(state_size, hidden_size))
     modules.append(nn.ReLU())

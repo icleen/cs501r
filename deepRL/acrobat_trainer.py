@@ -79,7 +79,7 @@ class RLTrainer():
     self.policy_path = config['model']['policy_save_path'].split('.pt')[0]
     self.value_path = config['model']['value_save_path'].split('.pt')[0]
     self.gif_path = config['model']['gif_save_path'].split('.gif')[0]
-    self.graph_path = config['model']['graph_save_path']
+    self.graph_path = config['model']['graph_save_path'].split('.png')[0]
 
 
   def train(self, itr=0):
@@ -199,7 +199,7 @@ class RLTrainer():
       itr = train_info['iter']
     self.plosses = train_info['plosses']
     self.vlosses = train_info['vlosses']
-    self.avg_reward = train_info['stand_time']
+    self.avg_reward = train_info['avg_reward']
     self.optim = train_info['optimizer']
     # self.policy_optim = train_info['policy_optimizer']
     # self.value_optim = train_info['value_optimizer']
@@ -233,11 +233,16 @@ class RLTrainer():
     if itr > 2:
       plt.plot(self.vlosses[2:], label='value loss')
       plt.plot(self.plosses[2:], label='policy loss')
-      plt.plot(self.avg_reward[2:], label='stand time')
       plt.legend()
       plt.xlabel('epochs')
       plt.ylabel('loss')
-      plt.savefig(self.graph_path)
+      plt.savefig(str(self.graph_path + '_loss.png'))
+
+      plt.plot(self.avg_reward[2:], label='rewards')
+      plt.legend()
+      plt.xlabel('epochs')
+      plt.ylabel('rewards')
+      plt.savefig(str(self.graph_path + '_reward.png'))
 
 
   def make_gif(self, itr, rollout):
