@@ -63,7 +63,7 @@ class RLTrainer():
       env = self.env
       state = env.reset()
       reward = 0
-      for _ in range(1000):
+      for i in range(1000):
         env.render()
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         probs = self.policy_net(state).squeeze()
@@ -71,6 +71,8 @@ class RLTrainer():
         action_one_hot = np.random.multinomial(1, probs_np)
         action = np.argmax(action_one_hot)
         state, rew, _, _ = env.step(action)
+        if i % 50 == 0:
+          print(state)
         reward += rew
       print('Final reward: {}'.format(reward))
     except Exception as e:

@@ -1,15 +1,15 @@
 {
   "train": {
     "epochs": 1000,
-    "env_samples": 50,
-    "episode_length": 1000,
-    "gamma": 0.99,
+    "env_samples": 75,
+    "episode_length": 500,
+    "gamma": 0.9999,
     "value_epochs": 2,
     "policy_epochs": 5,
     "batch_size": 32,
-    "policy_batch_size": 128,
+    "policy_batch_size": 256,
     "epsilon": 0.2,
-    "lr": 0.001,
+    "lr": 0.0001,
     "policy_lr": 0.0001,
     "value_lr": 0.0001,
     "betas1": 0.9,
@@ -24,11 +24,11 @@
     "action_size": 3,
     "hidden_size": 100,
     "hidden_layers": 5,
-    "policy_save_path": "models/mtcar_policy.pt",
-    "value_save_path": "models/mtcar_value.pt",
-    "trainer_save_path": "logs/mtcar_log.pt",
-    "gif_save_path": "visuals/mtcar_gif.gif",
-    "graph_save_path": "visuals/mtcar_graph.png",
+    "policy_save_path": "models/mtcar3_policy.pt",
+    "value_save_path": "models/mtcar3_value.pt",
+    "trainer_save_path": "logs/mtcar3_log.pt",
+    "gif_save_path": "visuals/mtcar3_gif.gif",
+    "graph_save_path": "visuals/mtcar3_graph.png",
     "write_interval": 5
   }
 }

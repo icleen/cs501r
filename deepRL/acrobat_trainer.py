@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from dataset import RLDataset
 from model import Policy1D, Value1D
 from loss import PPOLoss
+from rollout_factory import RolloutFactory
 
 
 class RLTrainer():
@@ -74,6 +75,10 @@ class RLTrainer():
       self.device = torch.device("cpu")
       print("No GPU detected")
 
+    self.rollFact = RolloutFactory(self.env, config['model']['gym'],
+                                self.policy_net, self.env_samples,
+                                self.episode_length, self.gamma)
+
     self.write_interval = config['model']['write_interval']
     self.train_info_path = config['model']['trainer_save_path']
     self.policy_path = config['model']['policy_save_path'].split('.pt')[0]
@@ -85,7 +90,7 @@ class RLTrainer():
   def train(self, itr=0):
     for i in range(self.epochs):
       # generate rollouts
-      rollouts = self.get_rollouts()
+      rollouts = self.rollFact.get_rollouts()
 
       # Learn a policy
       vlosses = []
@@ -121,52 +126,12 @@ class RLTrainer():
       self.plosses.append(np.mean(plosses))
 
       if (itr+i) % self.write_interval == 0:
-        print('iter: {}, avg reward: {}, vloss: {}, ploss: {}'.format(
-          itr+i, self.avg_reward[-1], vloss, ploss ))
+        self.avg_reward = self.rollFact.avg_reward
+        print('iter: {}, avg reward: {}, vloss: {}, ploss: {}, avg_len: {}'.format(
+          itr+i, self.avg_reward[-1], vloss, ploss, len(rollouts[-1]) ))
         self.write_out(itr+i)
-        self.make_gif(itr, rollouts[0])
 
       # print(torch.cuda.memory_allocated(0) / 1e9)
-
-  def get_rollouts(self):
-    env = self.env
-    rollouts = []
-    avg_rw = 0.0
-    for p in self.policy_net.parameters():
-      p.requires_grad = False
-    for _ in range(self.env_samples):
-      # don't forget to reset the environment at the beginning of each episode!
-      # rollout for a certain number of steps!
-      rollout = []
-      state = env.reset()
-      # print(state)
-      # print(env.action_space)
-      # input('waiting...')
-      done = False
-      while not done and len(rollout) < self.episode_length:
-        state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        probs = self.policy_net(state).squeeze()
-        probs_np = probs.cpu().detach().numpy()
-        action_one_hot = np.random.multinomial(1, probs_np)
-        action = np.argmax(action_one_hot)
-        tp = [state.squeeze().cpu(), probs.cpu(), torch.LongTensor([action]).cpu()]
-        # next_state, reward, done, info
-        state, reward, done, _ = env.step(action)
-        avg_rw += reward
-        tp.append(torch.FloatTensor([reward]).cpu())
-        rollout.append(tp)
-      value = 0.0
-      for i in reversed(range(len(rollout))):
-        value = rollout[i][-1] + self.gamma * value
-        rollout[i].append(value.cpu())
-      rollouts.append(rollout)
-      gc.collect()
-
-    for p in self.policy_net.parameters():
-      p.requires_grad = True
-    self.avg_reward.append(avg_rw / self.env_samples)
-    # print('avg standing time:', self.avg_reward[-1])
-    return rollouts
 
   def multinomial_likelihood(self, dist, idx):
     return dist[range(dist.shape[0]), idx.long()[:, 0]].unsqueeze(1)
@@ -245,17 +210,6 @@ class RLTrainer():
       plt.ylabel('rewards')
       plt.savefig(str(self.graph_path + '_reward.png'))
       plt.clf()
-
-
-  def make_gif(self, itr, rollout):
-    pass
-    # Make gifs
-    # with imageio.get_writer(str(self.gif_path + '_' + str(itr) + '.gif'),
-    #                         mode='I', duration=1 / 30) as writer:
-    #   for x in rollout:
-    #     x = x[0].numpy()
-    #     input(x)
-    #     writer.append_data((x * 255).astype(np.uint8))
 
 
 if __name__ == '__main__':
