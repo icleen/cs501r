@@ -1,7 +1,7 @@
 {
   "train": {
     "epochs": 1000,
-    "env_samples": 100,
+    "env_samples": 50,
     "episode_length": 200,
     "gamma": 0.99,
     "policy_epochs": 5,
