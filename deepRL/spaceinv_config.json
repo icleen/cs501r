@@ -1,0 +1,35 @@
+{
+  "train": {
+    "epochs": 1000,
+    "env_samples": 100,
+    "episode_length": 500,
+    "gamma": 0.99,
+    "value_epochs": 2,
+    "policy_epochs": 5,
+    "batch_size": 32,
+    "policy_batch_size": 256,
+    "epsilon": 0.2,
+    "lr": 0.0001,
+    "policy_lr": 0.0001,
+    "value_lr": 0.0001,
+    "betas1": 0.9,
+    "betas2": 0.999,
+    "weight_decay": 0.01,
+    "policy_decay": 0.01,
+    "value_decay": 1
+  },
+  "model": {
+    "gym": "SpaceInvaders-v0",
+    "state_size": [3, 210, 160],
+    "action_size": 6,
+    "conv_layers": 5,
+    "hidden_size": 64,
+    "hidden_layers": 1,
+    "policy_save_path": "models/spaceinv_policy.pt",
+    "value_save_path": "models/spaceinv_value.pt",
+    "trainer_save_path": "logs/spaceinv_log.pt",
+    "gif_save_path": "visuals/spaceinv_gif.gif",
+    "graph_save_path": "visuals/spaceinv_graph.png",
+    "write_interval": 5
+  }
+}
