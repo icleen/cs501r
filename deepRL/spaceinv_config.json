@@ -26,9 +26,7 @@
     "hidden_size": 64,
     "hidden_layers": 1,
     "policy_save_path": "models/spaceinv_policy.pt",
-    "value_save_path": "models/spaceinv_value.pt",
     "trainer_save_path": "logs/spaceinv_log.pt",
-    "gif_save_path": "visuals/spaceinv_gif.gif",
     "graph_save_path": "visuals/spaceinv_graph.png",
     "write_interval": 5
   }

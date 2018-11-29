@@ -77,8 +77,6 @@ class RLTrainer():
     self.write_interval = config['model']['write_interval']
     self.train_info_path = config['model']['trainer_save_path']
     self.policy_path = config['model']['policy_save_path'].split('.pt')[0]
-    self.value_path = config['model']['value_save_path'].split('.pt')[0]
-    self.gif_path = config['model']['gif_save_path'].split('.gif')[0]
     self.graph_path = config['model']['graph_save_path'].split('.png')[0]
 
 
