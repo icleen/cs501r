@@ -11,7 +11,7 @@
     "lr": 0.0001,
     "betas1": 0.9,
     "betas2": 0.999,
-    "weight_decay": 0.01,
+    "weight_decay": 0.01
   },
   "model": {
     "gym": "SpaceInvaders-v0",
