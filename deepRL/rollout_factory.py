@@ -98,6 +98,7 @@ class RolloutFactory2D(object):
         avg_rw += reward
         tp.append(torch.FloatTensor([reward]))
         rollout.append(tp)
+        gc.collect()
       value = 0.0
       for i in reversed(range(len(rollout))):
         value = rollout[i][-1] + self.gamma * value
