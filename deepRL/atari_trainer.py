@@ -43,7 +43,7 @@ class RLTrainer():
     state_size = config['model']['state_size']
     action_size = config['model']['action_size']
     hidden_size = config['model']['hidden_size']
-    layer_size = config['model']['hidden_layers']
+    layer_size = config['model']['conv_layers']
     self.action_size = action_size
     self.policy_net = Policy2D(state_size, action_size,
                               hidden_size=hidden_size, layers=layer_size)
@@ -108,11 +108,18 @@ class RLTrainer():
           ploss = self.ppoloss(ratio, advantage)
           plosses.append(ploss.cpu().item())
 
+          pdist = None
+          pval = None
+          clik = None
+          olik = None
+          ratio = None
+          advantage = None
+          gc.collect()
+
           self.optim.zero_grad()
           loss = ploss + vloss
           loss.backward()
           self.optim.step()
-          gc.collect()
       self.vlosses.append(np.mean(vlosses))
       self.plosses.append(np.mean(plosses))
 

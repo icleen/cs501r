@@ -74,9 +74,17 @@ class Policy2D(nn.Module):
     x = int(state_size[1] / pow(2, down))
     y = int(state_size[2] / pow(2, down))
     self.modsize = x * y * hidden_size
-    self.policy = nn.Linear(self.modsize, action_size)
+    self.policy = nn.Sequential(
+      nn.Linear(self.modsize, hidden_size),
+      nn.ReLU(),
+      nn.Linear(hidden_size, action_size)
+    )
     self.softmax = nn.Softmax(dim=1)
-    self.value = nn.Linear(self.modsize, 1)
+    self.value = nn.Sequential(
+      nn.Linear(self.modsize, hidden_size),
+      nn.ReLU(),
+      nn.Linear(hidden_size, 1)
+    )
 
 
   def forward(self, x):

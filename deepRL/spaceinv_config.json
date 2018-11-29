@@ -6,7 +6,7 @@
     "gamma": 0.99,
     "policy_epochs": 5,
     "batch_size": 32,
-    "policy_batch_size": 256,
+    "policy_batch_size": 64,
     "epsilon": 0.2,
     "lr": 0.0001,
     "betas1": 0.9,
