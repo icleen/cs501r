@@ -33,7 +33,6 @@ class RLTrainer():
     self.env_samples = config['train']['env_samples']
     self.episode_length = config['train']['episode_length']
     self.gamma = config['train']['gamma']
-    self.value_epochs = config['train']['value_epochs']
     self.policy_epochs = config['train']['policy_epochs']
     self.batch_size = config['train']['batch_size']
     self.policy_batch_size = config['train']['policy_batch_size']
@@ -158,8 +157,6 @@ class RLTrainer():
     self.vlosses = train_info['vlosses']
     self.avg_reward = train_info['avg_reward']
     self.optim = train_info['optimizer']
-    # self.policy_optim = train_info['policy_optimizer']
-    # self.value_optim = train_info['value_optimizer']
 
     self.policy_net.load_state_dict(torch.load(
       str(self.policy_path + '_' + str(itr) + '.pt') ))
@@ -174,8 +171,6 @@ class RLTrainer():
     train_info['vlosses'] = self.vlosses
     train_info['avg_reward'] = self.avg_reward
     train_info['optimizer'] = self.optim
-    # train_info['policy_optimizer'] = self.policy_optim
-    # train_info['value_optimizer'] = self.value_optim
     torch.save( train_info, self.train_info_path )
 
     torch.save( self.policy_net.state_dict(),
