@@ -64,7 +64,6 @@ class RLTrainer():
 
     if torch.cuda.is_available():
       self.policy_net.cuda()
-      self.value_net.cuda()
       self.device = torch.device("cuda")
       print("Using GPU")
     else:
@@ -167,9 +166,6 @@ class RLTrainer():
     self.policy_net.load_state_dict(torch.load(
       str(self.policy_path + '_' + str(itr) + '.pt') ))
 
-    self.value_net.load_state_dict(torch.load(
-      str(self.value_path + '_' + str(itr) + '.pt') ))
-
     self.epochs += itr
     return itr
 
@@ -186,9 +182,6 @@ class RLTrainer():
 
     torch.save( self.policy_net.state_dict(),
       str(self.policy_path + '_' + str(itr) + '.pt') )
-
-    torch.save( self.value_net.state_dict(),
-      str(self.value_path + '_' + str(itr) + '.pt') )
 
     if itr > 2:
       plt.plot(self.vlosses[2:], label='value loss')
