@@ -87,6 +87,13 @@ class Policy2D(nn.Module):
     )
 
 
+  def sample(self, probs):
+    probs = probs.squeeze().cpu()
+    probs_np = probs.detach().numpy()
+    action_one_hot = np.random.multinomial(1, probs_np)
+    action = np.argmax(action_one_hot)
+    return action
+
   def forward(self, x):
     x = self.net(x)
     x = x.view(-1, self.modsize)

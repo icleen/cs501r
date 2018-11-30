@@ -23,6 +23,6 @@
     "policy_save_path": "models/spaceinv_policy.pt",
     "trainer_save_path": "logs/spaceinv_log.pt",
     "graph_save_path": "visuals/spaceinv_graph.png",
-    "write_interval": 5
+    "write_interval": 2
   }
 }
