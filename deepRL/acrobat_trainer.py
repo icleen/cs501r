@@ -45,10 +45,11 @@ class RLTrainer():
     action_size = config['model']['action_size']
     hidden_size = config['model']['hidden_size']
     layer_size = config['model']['hidden_layers']
+    logheat = config['model']['logheat']
     self.action_size = action_size
     self.policy_net = Policy1D(state_size, action_size,
                               hidden_size=hidden_size,
-                              layers=layer_size)
+                              layers=layer_size, logheat=logheat)
     self.value_net = Value1D(state_size,
                             hidden_size=hidden_size,
                             layers=layer_size)
@@ -77,7 +78,8 @@ class RLTrainer():
 
     self.rollFact = RolloutFactory(self.env, config['model']['gym'],
                                 self.policy_net, self.env_samples,
-                                self.episode_length, self.gamma)
+                                self.episode_length, self.gamma,
+                                cutearly=config['train']['cutearly'])
 
     self.write_interval = config['model']['write_interval']
     self.train_info_path = config['model']['trainer_save_path']
@@ -136,27 +138,6 @@ class RLTrainer():
   def multinomial_likelihood(self, dist, idx):
     return dist[range(dist.shape[0]), idx.long()[:, 0]].unsqueeze(1)
 
-  def test(self):
-    env = self.env
-    state = env.reset()
-    for _ in range(1000):
-      env.render()
-      probs = self.policy_net(state)
-      probs_np = probs.cpu().detach().numpy()
-      action_one_hot = np.random.multinomial(1, probs_np)
-      action = np.argmax(action_one_hot)
-      state, reward, done, info = env.step(action)
-
-  def run(self, cont=False):
-    # check to see if we should continue from an existing checkpoint
-    # otherwise start from scratch
-    if cont:
-      itr = self.read_in()
-      print('continuing')
-      self.train(itr)
-    else:
-      self.train()
-
   def read_in(self, itr=None):
     train_info = {}
     train_info = torch.load(self.train_info_path)
@@ -210,6 +191,16 @@ class RLTrainer():
       plt.ylabel('rewards')
       plt.savefig(str(self.graph_path + '_reward.png'))
       plt.clf()
+
+  def run(self, cont=False):
+    # check to see if we should continue from an existing checkpoint
+    # otherwise start from scratch
+    if cont:
+      itr = self.read_in()
+      print('continuing')
+      self.train(itr)
+    else:
+      self.train()
 
 
 if __name__ == '__main__':

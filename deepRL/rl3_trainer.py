@@ -37,30 +37,30 @@ def _calculate_returns(trajectory, gamma):
 
 def _run_envs(env, embedding_net, policy, experience_queue, reward_queue, num_rollouts, max_episode_length,
               gamma, device):
-    for _ in range(num_rollouts):
-      current_rollout = []
-      s = env.reset()
-      episode_reward = 0
-      for _ in range(max_episode_length):
-        input_state = _prepare_numpy(s, device)
-        if embedding_net:
-          input_state = embedding_net(input_state)
+  for _ in range(num_rollouts):
+    current_rollout = []
+    s = env.reset()
+    episode_reward = 0
+    for _ in range(max_episode_length):
+      input_state = _prepare_numpy(s, device)
+      if embedding_net:
+        input_state = embedding_net(input_state)
 
-        action_dist = policy(input_state).squeeze().cpu().detach().numpy()
-        action_one_hot = np.random.multinomial(1, action_dist)
-        action = np.array([np.argmax(action_one_hot)], dtype=np.uint8)
-        s_prime, r, t = env.step(action)
+      action_dist = policy(input_state).squeeze().cpu().detach().numpy()
+      action_one_hot = np.random.multinomial(1, action_dist)
+      action = np.array([np.argmax(action_one_hot)], dtype=np.uint8)
+      s_prime, r, t = env.step(action)
 
-        if type(r) != float:
-          print('run envs:', r, type(r))
-        current_rollout.append((s, action_dist, action, r))
-        episode_reward += r
-        if t:
-            break
-        s = s_prime
-      _calculate_returns(current_rollout, gamma)
-      experience_queue.put(current_rollout)
-      reward_queue.put(episode_reward)
+      if type(r) != float:
+        print('run envs:', r, type(r))
+      current_rollout.append((s, action_dist, action, r))
+      episode_reward += r
+      if t:
+          break
+      s = s_prime
+    _calculate_returns(current_rollout, gamma)
+    experience_queue.put(current_rollout)
+    reward_queue.put(episode_reward)
 
 
 class RLTrainer():

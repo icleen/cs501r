@@ -5,7 +5,7 @@ import gc
 
 class RolloutFactory(object):
   """docstring for RolloutFactory."""
-  def __init__(self, env, envname, policy_net, env_samples, episode_length, gamma):
+  def __init__(self, env, envname, policy_net, env_samples, episode_length, gamma, cutearly=True):
     super(RolloutFactory, self).__init__()
     self.env = env
     self.policy_net = policy_net
@@ -13,6 +13,7 @@ class RolloutFactory(object):
     self.episode_length = episode_length
     self.gamma = gamma
     self.device = torch.device("cpu")
+    self.cutearly = cutearly
     if torch.cuda.is_available():
       self.device = torch.device("cuda")
 
@@ -34,16 +35,14 @@ class RolloutFactory(object):
       for i in range(self.episode_length):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         probs = self.policy_net(state).squeeze().cpu()
-        probs_np = probs.detach().numpy()
-        action_one_hot = np.random.multinomial(1, probs_np)
-        action = np.argmax(action_one_hot)
+        action = self.policy_net.sample(probs)
         tp = [state.squeeze().cpu(), probs, torch.LongTensor([action])]
         # next_state, reward, done, info
         state, reward, done, _ = env.step(action)
         avg_rw += reward
         tp.append(torch.FloatTensor([reward]))
         rollout.append(tp)
-        if done:
+        if self.cutearly and done:
           break
       value = 0.0
       for i in reversed(range(len(rollout))):

@@ -44,9 +44,11 @@ class RLTrainer():
     action_size = config['model']['action_size']
     hidden_size = config['model']['hidden_size']
     layer_size = config['model']['conv_layers']
+    logheat = config['model']['logheat']
     self.action_size = action_size
     self.policy_net = Policy2D(state_size, action_size,
-                              hidden_size=hidden_size, layers=layer_size)
+                              hidden_size=hidden_size, layers=layer_size,
+                              logheat=logheat)
 
     self.value_loss = nn.MSELoss()
     self.ppoloss = PPOLoss(epsilon)

@@ -10,8 +10,11 @@ import numpy as np
 
 class Policy1D(nn.Module):
   """docstring for Policy1D."""
-  def __init__(self, state_size=4, action_size=2, hidden_size=100, layers=2):
+  def __init__(self, state_size=4, action_size=2, hidden_size=100,
+                    layers=2, logheat=1.0):
     super(Policy1D, self).__init__()
+
+    self.logheat = logheat
 
     modules = []
     modules.append(nn.Linear(state_size, hidden_size))
@@ -20,12 +23,19 @@ class Policy1D(nn.Module):
       modules.append(nn.Linear(hidden_size, hidden_size))
       modules.append(nn.ReLU())
     modules.append(nn.Linear(hidden_size, action_size))
-    modules.append(nn.Softmax(dim=1))
     self.layer = nn.Sequential(*modules)
+    self.softmax = nn.Softmax(dim=1)
+
+  def sample(self, probs):
+    probs = probs.squeeze().cpu()
+    probs_np = probs.detach().numpy()
+    action_one_hot = np.random.multinomial(1, probs_np)
+    action = np.argmax(action_one_hot)
+    return action
 
   def forward(self, x):
     x = self.layer(x)
-    # return Categorical(x)
+    x = self.softmax(x / self.logheat)
     return x
 
 
@@ -50,8 +60,11 @@ class Value1D(nn.Module):
 
 class Policy2D(nn.Module):
   """docstring for Policy2D."""
-  def __init__(self, state_size=[3, 84, 84], action_size=6, hidden_size=64, layers=3):
+  def __init__(self, state_size=[3, 84, 84], action_size=6, hidden_size=64,
+                    layers=3, logheat=1.0):
     super(Policy2D, self).__init__()
+
+    self.logheat = logheat
 
     modules = []
     modules.append(nn.Conv2d(state_size[0], hidden_size,
@@ -98,7 +111,7 @@ class Policy2D(nn.Module):
     x = self.net(x)
     x = x.view(-1, self.modsize)
     p, v = self.policy(x), self.value(x)
-    p = self.softmax(p)
+    p = self.softmax(p /  self.logheat)
     return p, v
 
 
