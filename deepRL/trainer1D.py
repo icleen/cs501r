@@ -50,6 +50,8 @@ class Trainer1D():
 
     state_size = config['model']['state_size']
     action_size = config['model']['action_size']
+    hidden_size = config['model']['hidden_size']
+    layer_size = config['model']['hidden_layers']
     self.action_size = action_size
     self.policy_net = Policy1D(state_size, action_size)
 
@@ -167,8 +169,8 @@ class Trainer1D():
 
       if (itr+i) % self.write_interval == 0:
         print(
-          'avg reward: % 6.2f, value loss: % 6.2f, policy loss: % 6.2f' \
-          % (avg_r, avg_val_loss, avg_policy_loss) )
+          'itr: % i, avg reward: % 6.2f, value loss: % 6.2f, policy loss: % 6.2f' \
+          % ((itr+i), avg_r, avg_val_loss, avg_policy_loss) )
         self.write_out(itr+i)
 
 
