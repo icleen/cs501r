@@ -23,20 +23,42 @@ class Policy1D(nn.Module):
       modules.append(nn.Linear(hidden_size, hidden_size))
       modules.append(nn.ReLU())
     modules.append(nn.Linear(hidden_size, action_size))
-    self.layer = nn.Sequential(*modules)
+    self.policy = nn.Sequential(*modules)
+
+    modules = []
+    modules.append(nn.Linear(state_size, hidden_size))
+    modules.append(nn.ReLU())
+    for n in range(layers):
+      modules.append(nn.Linear(hidden_size, hidden_size))
+      modules.append(nn.ReLU())
+    modules.append(nn.Linear(hidden_size, 1))
+    self.value = nn.Sequential(*modules)
+
     self.softmax = nn.Softmax(dim=1)
 
   def sample(self, probs):
-    probs = probs.squeeze().cpu()
-    probs_np = probs.detach().numpy()
+    probs_np = probs.squeeze().cpu().detach().numpy()
     action_one_hot = np.random.multinomial(1, probs_np)
     action = np.argmax(action_one_hot)
     return action
 
-  def forward(self, x):
-    x = self.layer(x)
-    x = self.softmax(x / self.logheat)
-    return x
+  def forward(self, x, get_action=True):
+    p, v = self.policy(x), self.value(x)
+    p = self.softmax(p /  self.logheat)
+
+    if not get_action:
+      return p, v
+
+    batch_size = x.shape[0]
+    actions = np.empty((batch_size, 1), dtype=np.uint8)
+    probs_np = p.cpu().detach().numpy()
+    for i in range(batch_size):
+      action_one_hot = np.random.multinomial(1, probs_np[i])
+      action_idx = np.argmax(action_one_hot)
+      actions[i, 0] = action_idx
+    return p, actions
+
+
 
 
 class Value1D(nn.Module):

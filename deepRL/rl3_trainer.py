@@ -16,6 +16,7 @@ from torchvision.utils import save_image
 from torch.distributions import Categorical
 
 from env_factory import *
+from tqdm import tqdm
 
 from dataset import RLDataset, ExperienceDataset
 from model import Policy1D, Value1D
@@ -46,13 +47,15 @@ def _run_envs(env, embedding_net, policy, experience_queue, reward_queue, num_ro
       if embedding_net:
         input_state = embedding_net(input_state)
 
-      action_dist = policy(input_state).squeeze().cpu().detach().numpy()
+      action_dist, _ = policy(input_state)
+      action_dist = action_dist.squeeze().cpu().detach().numpy()
       action_one_hot = np.random.multinomial(1, action_dist)
       action = np.array([np.argmax(action_one_hot)], dtype=np.uint8)
       s_prime, r, t = env.step(action)
 
       if type(r) != float:
         print('run envs:', r, type(r))
+
       current_rollout.append((s, action_dist, action, r))
       episode_reward += r
       if t:
@@ -91,7 +94,7 @@ class RLTrainer():
     action_size = config['model']['action_size']
     self.action_size = action_size
     self.policy_net = Policy1D(state_size, action_size)
-    self.value_net = Value1D(state_size)
+    # self.value_net = Value1D(state_size)
 
     self.value_loss = nn.MSELoss()
     self.ppoloss = PPOLoss(epsilon)
@@ -101,8 +104,8 @@ class RLTrainer():
     betas = (config['train']['betas1'], config['train']['betas2'])
     weight_decay = config['train']['weight_decay']
     lr = config['train']['lr']
-    params = chain(self.policy_net.parameters(), self.value_net.parameters())
-    self.optim = optim.Adam(params, lr=lr, betas=betas, weight_decay=weight_decay)
+    # params = chain(self.policy_net.parameters(), self.value_net.parameters())
+    self.optim = optim.Adam(self.policy_net.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
 
     self.plosses = []
     self.vlosses = []
@@ -124,6 +127,9 @@ class RLTrainer():
 
 
   def train(self, itr=0):
+
+    loop = tqdm(total=self.epochs, position=0, leave=False)
+
     for i in range(self.epochs):
       # generate rollouts
       experience_queue = Queue()
@@ -145,7 +151,9 @@ class RLTrainer():
 
       # Collect the experience
       rollouts = list(experience_queue.queue)
-      self.stand_time.append(sum(reward_queue.queue) / reward_queue.qsize())
+      avg_r = sum(reward_queue.queue) / reward_queue.qsize()
+      # loop.set_description('avg reward: % 6.2f' % (avg_r))
+      self.stand_time.append(avg_r)
 
       # Update the policy
       experience_dataset = ExperienceDataset(rollouts)
@@ -154,9 +162,9 @@ class RLTrainer():
                               shuffle=True,
                               pin_memory=True)
 
-      # Learn a policy
       vlosses = []
       plosses = []
+      # Learn a policy
       for _ in range(self.policy_epochs):
         # train policy network
         for state, aprob, action, reward, value in dataloader:
@@ -165,12 +173,11 @@ class RLTrainer():
           action = _prepare_tensor_batch(action, self.device)
           value = _prepare_tensor_batch(value, self.device).unsqueeze(1)
 
-          pdist = self.policy_net(state)
+          pdist, pval = self.policy_net(state)
           clik = self.multinomial_likelihood(pdist, action)
           olik = self.multinomial_likelihood(aprob, action)
           ratio = (clik / olik)
 
-          pval = self.value_net(state)
           vloss = self.value_loss(pval, value)
           vlosses.append(vloss.cpu().item())
 
@@ -183,12 +190,18 @@ class RLTrainer():
           loss.backward()
           self.optim.step()
           gc.collect()
+
+      loop.set_description(
+        'avg reward: % 6.2f, value loss: % 6.2f, policy loss: % 6.2f' \
+        % (avg_r, np.mean(vlosses), np.mean(plosses)))
+      loop.update(1)
+
       self.vlosses.append(np.mean(vlosses))
       self.plosses.append(np.mean(plosses))
 
       if (itr+i) % self.write_interval == 0:
-        print('iter: {}, avg stand time: {}, vloss: {}, ploss: {}'.format(
-          itr+i, self.stand_time[-1], vloss, ploss ))
+        # print('iter: {}, avg stand time: {}, vloss: {}, ploss: {}'.format(
+        #   itr+i, self.stand_time[-1], vloss, ploss ))
         self.write_out(itr+i)
 
       # print(torch.cuda.memory_allocated(0) / 1e9)
@@ -221,9 +234,6 @@ class RLTrainer():
     self.policy_net.load_state_dict(torch.load(
       str(self.policy_path + '_' + str(itr) + '.pt') ))
 
-    self.value_net.load_state_dict(torch.load(
-      str(self.value_path + '_' + str(itr) + '.pt') ))
-
     self.epochs += itr
     return itr
 
@@ -240,9 +250,6 @@ class RLTrainer():
 
     torch.save( self.policy_net.state_dict(),
       str(self.policy_path + '_' + str(itr) + '.pt') )
-
-    torch.save( self.value_net.state_dict(),
-      str(self.value_path + '_' + str(itr) + '.pt') )
 
 
 if __name__ == '__main__':

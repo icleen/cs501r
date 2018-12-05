@@ -18,7 +18,6 @@ class RolloutFactory(object):
       self.device = torch.device("cuda")
 
     self.avg_reward = []
-    self.mtcar = (envname == 'MountainCar-v0')
 
   def get_rollouts(self):
     env = self.env
@@ -33,27 +32,27 @@ class RolloutFactory(object):
       state = env.reset()
       done = False
       for i in range(self.episode_length):
-        state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        probs = self.policy_net(state).squeeze().cpu()
-        action = self.policy_net.sample(probs)
-        tp = [state.squeeze().cpu(), probs, torch.LongTensor([action])]
-        # next_state, reward, done, info
-        state, reward, done, _ = env.step(action)
-        avg_rw += reward
-        tp.append(torch.FloatTensor([reward]))
-        rollout.append(tp)
+        in_state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+
+        probs, action = self.policy_net(in_state)
+        probs, action = probs[0], action[0]  # Remove the batch dimension
+        s_prime, reward, done, _ = env.step(action.item())
+
+        rollout.append([state, probs.cpu().detach().numpy(), action, reward])
         if self.cutearly and done:
           break
+        state = s_prime
+      # calculate returns
       value = 0.0
       for i in reversed(range(len(rollout))):
         value = rollout[i][-1] + self.gamma * value
-        rollout[i].append(value.cpu())
+        rollout[i].append(value)
       rollouts.append(rollout)
       gc.collect()
 
     for p in self.policy_net.parameters():
       p.requires_grad = True
-    self.avg_reward.append(avg_rw / self.env_samples)
+    # self.avg_reward.append(avg_rw / self.env_samples)
     # print('avg standing time:', self.avg_reward[-1])
     return rollouts
 
