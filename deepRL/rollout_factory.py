@@ -22,7 +22,6 @@ class RolloutFactory(object):
   def get_rollouts(self):
     env = self.env
     rollouts = []
-    avg_rw = 0.0
     for p in self.policy_net.parameters():
       p.requires_grad = False
     for _ in range(self.env_samples):
@@ -52,8 +51,6 @@ class RolloutFactory(object):
 
     for p in self.policy_net.parameters():
       p.requires_grad = True
-    # self.avg_reward.append(avg_rw / self.env_samples)
-    # print('avg standing time:', self.avg_reward[-1])
     return rollouts
 
 class RolloutFactory2D(object):
@@ -74,7 +71,6 @@ class RolloutFactory2D(object):
   def get_rollouts(self):
     env = self.env
     rollouts = []
-    avg_rw = 0.0
     for p in self.policy_net.parameters():
       p.requires_grad = False
     for _ in range(self.env_samples):
@@ -93,7 +89,6 @@ class RolloutFactory2D(object):
         tp = [state.squeeze().cpu(), probs, torch.LongTensor([action])]
         # next_state, reward, done, info
         state, reward, done, _ = env.step(action)
-        avg_rw += reward
         tp.append(torch.FloatTensor([reward]))
         rollout.append(tp)
         gc.collect()
@@ -106,6 +101,4 @@ class RolloutFactory2D(object):
 
     for p in self.policy_net.parameters():
       p.requires_grad = True
-    self.avg_reward.append(avg_rw / self.env_samples)
-    # print('avg standing time:', self.avg_reward[-1])
     return rollouts

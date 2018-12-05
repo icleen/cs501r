@@ -2,33 +2,32 @@
   "train": {
     "epochs": 1000,
     "env_samples": 100,
-    "episode_length": 500,
+    "episode_length": 200,
     "cutearly": false,
-    "gamma": 0.99,
+    "gamma": 0.9,
     "value_epochs": 2,
     "policy_epochs": 5,
     "batch_size": 32,
     "policy_batch_size": 256,
     "epsilon": 0.2,
-    "lr": 0.0001,
+    "lr": 0.001,
     "policy_lr": 0.0001,
     "value_lr": 0.0001,
     "betas1": 0.9,
     "betas2": 0.999,
-    "weight_decay": 0.001
+    "weight_decay": 0.01
   },
   "model": {
     "gym": "MountainCar-v0",
     "state_size": 2,
     "action_size": 3,
-    "hidden_size": 100,
+    "hidden_size": 10,
     "hidden_layers": 5,
-    "logheat": 100.0,
+    "logheat": 10.0,
     "policy_save_path": "models/mtcar_policy.pt",
     "value_save_path": "models/mtcar_value.pt",
     "trainer_save_path": "logs/mtcar_log.pt",
-    "gif_save_path": "visuals/mtcar_gif.gif",
     "graph_save_path": "visuals/mtcar_graph.png",
-    "write_interval": 5
+    "write_interval": 1
   }
 }

@@ -59,8 +59,6 @@ class Policy1D(nn.Module):
     return p, actions
 
 
-
-
 class Value1D(nn.Module):
   """docstring for Value1D."""
   def __init__(self, state_size=4, hidden_size=100, layers=2):

@@ -24,10 +24,10 @@
     "hidden_size": 10,
     "hidden_layers": 3,
     "logheat": 10.0,
-    "policy_save_path": "models/policy_model.pt",
-    "value_save_path": "models/value_model.pt",
-    "trainer_save_path": "logs/cp_log.pt",
-    "graph_save_path": "visuals/cp_graph.png",
+    "policy_save_path": "models/cartp_policy.pt",
+    "value_save_path": "models/cartp_value.pt",
+    "trainer_save_path": "logs/cartp_log.pt",
+    "graph_save_path": "visuals/cartp_graph.png",
     "write_interval": 1
   }
 }
