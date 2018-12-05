@@ -17,6 +17,7 @@ class RolloutFactory(object):
     if torch.cuda.is_available():
       self.device = torch.device("cuda")
 
+    self.mtcar = (envname == 'MountainCar-v0')
     self.avg_reward = []
 
   def get_rollouts(self):
@@ -36,6 +37,11 @@ class RolloutFactory(object):
         probs, action = self.policy_net(in_state)
         probs, action = probs[0], action[0]  # Remove the batch dimension
         s_prime, reward, done, _ = env.step(action.item())
+
+        if self.mtcar:
+          reward = s_prime[0] + 0.5
+          if s_prime[0] >= 0.5:
+            reward += 1
 
         rollout.append([state, probs.cpu().detach().numpy(), action, reward])
         if self.cutearly and done:

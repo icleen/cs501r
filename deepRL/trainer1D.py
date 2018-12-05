@@ -52,8 +52,11 @@ class Trainer1D():
     action_size = config['model']['action_size']
     hidden_size = config['model']['hidden_size']
     layer_size = config['model']['hidden_layers']
-    self.action_size = action_size
-    self.policy_net = Policy1D(state_size, action_size)
+    logheat = config['model']['logheat']
+    self.policy_net = Policy1D(state_size, action_size,
+                                hidden_size=hidden_size,
+                                layers=layer_size,
+                                logheat=logheat)
 
     self.value_loss = nn.MSELoss()
 
@@ -65,8 +68,8 @@ class Trainer1D():
     betas = (config['train']['betas1'], config['train']['betas2'])
     weight_decay = config['train']['weight_decay']
     lr = config['train']['lr']
-    # params = chain(self.policy_net.parameters(), self.value_net.parameters())
-    self.optim = optim.Adam(self.policy_net.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
+    self.optim = optim.Adam(self.policy_net.parameters(), lr=lr,
+                            betas=betas, weight_decay=weight_decay)
 
     self.plosses = []
     self.vlosses = []
@@ -138,9 +141,9 @@ class Trainer1D():
           val_loss = self.value_loss(pval, value)
 
           # Calculate the policy loss
-          advantage = value - pval.detach()
-          lhs = ratio * advantage
-          rhs = torch.clamp(ratio, self.ppo_low_bnd, self.ppo_up_bnd) * advantage
+          adv = value - pval.detach()
+          lhs = ratio * adv
+          rhs = torch.clamp(ratio, self.ppo_low_bnd, self.ppo_up_bnd) * adv
           policy_loss = -torch.mean(torch.min(lhs, rhs))
 
           # For logging
@@ -169,8 +172,8 @@ class Trainer1D():
 
       if (itr+i) % self.write_interval == 0:
         print(
-          'itr: % i, avg reward: % 6.2f, value loss: % 6.2f, policy loss: % 6.2f' \
-          % ((itr+i), avg_r, avg_val_loss, avg_policy_loss) )
+'itr: % i, avg reward: % 6.2f, value loss: % 6.2f, policy loss: % 6.2f' \
+% ((itr+i), avg_r, avg_val_loss, avg_policy_loss) )
         self.write_out(itr+i)
 
 

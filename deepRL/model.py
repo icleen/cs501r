@@ -36,12 +36,6 @@ class Policy1D(nn.Module):
 
     self.softmax = nn.Softmax(dim=1)
 
-  def sample(self, probs):
-    probs_np = probs.squeeze().cpu().detach().numpy()
-    action_one_hot = np.random.multinomial(1, probs_np)
-    action = np.argmax(action_one_hot)
-    return action
-
   def forward(self, x, get_action=True):
     p, v = self.policy(x), self.value(x)
     p = self.softmax(p /  self.logheat)

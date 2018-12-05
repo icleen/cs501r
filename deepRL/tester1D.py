@@ -34,8 +34,11 @@ class RLTrainer():
     action_size = config['model']['action_size']
     hidden_size = config['model']['hidden_size']
     layer_size = config['model']['hidden_layers']
-    self.action_size = action_size
-    self.policy_net = Policy1D(state_size, action_size)
+    logheat = config['model']['logheat']
+    self.policy_net = Policy1D(state_size, action_size,
+                                hidden_size=hidden_size,
+                                layers=layer_size,
+                                logheat=logheat)
 
     if torch.cuda.is_available():
       self.policy_net.cuda()
@@ -47,6 +50,7 @@ class RLTrainer():
       print("No GPU detected")
 
     self.visual = True
+    self.cut = config['train']['cutearly']
     self.write_interval = config['model']['write_interval']
     self.train_info_path = config['model']['trainer_save_path']
     self.policy_path = config['model']['policy_save_path'].split('.pt')[0]
@@ -63,10 +67,11 @@ class RLTrainer():
         adist, action = self.policy_net(state)
         adist, action = adist[0], action[0]
         state, rew, done, _ = env.step(action.item())
-        # if i % 50 == 0:
-        #   print(state)
+        if i % 50 == 0:
+          print(state)
+          print(adist)
         reward += rew
-        if done:
+        if self.cut and done:
           break
       print('Final reward: {}'.format(reward))
     except Exception as e:
