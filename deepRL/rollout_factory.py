@@ -1,110 +1,97 @@
 import torch
-import gym
 import numpy as np
 import gc
 
+from reversi_env import ReversiEnv
+
 class RolloutFactory(object):
   """docstring for RolloutFactory."""
-  def __init__(self, env, envname, policy_net, env_samples, episode_length, gamma, cutearly=True):
+  def __init__(self, policy_net, env_samples, gamma=0.9):
     super(RolloutFactory, self).__init__()
-    self.env = env
+    self.env = ReversiEnv()
     self.policy_net = policy_net
     self.env_samples = env_samples
-    self.episode_length = episode_length
     self.gamma = gamma
     self.device = torch.device("cpu")
-    self.cutearly = cutearly
     if torch.cuda.is_available():
       self.device = torch.device("cuda")
 
-    self.mtcar = (envname == 'MountainCar-v0')
-    self.avg_reward = []
 
   def get_rollouts(self):
     env = self.env
     rollouts = []
+    rounds = env.length()/2
     for p in self.policy_net.parameters():
       p.requires_grad = False
     for _ in range(self.env_samples):
       # don't forget to reset the environment at the beginning of each episode!
       # rollout for a certain number of steps!
-      rollout = []
+      rollout_p1 = []
+      rollout_p2 = []
       state = env.reset()
+      actions = env.action_space()
       done = False
-      for i in range(self.episode_length):
-        in_state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+      for i in range(rounds):
+        in_state = torch.FloatTensor(state).unsqueeze(0).unsqueeze(0).to(self.device)
+        probs, _ = self.policy_net(in_state)
 
-        probs, action = self.policy_net(in_state)
-        probs, action = probs[0], action[0]  # Remove the batch dimension
-        s_prime, reward, done, _ = env.step(action.item())
+        probs = probs.cpu().detach().numpy()
+        np_probs = np.zeros(64)
+        for a in actions:
+          np_probs[a[0]*8 + a[1]] += probs[a[0]*8 + a[1]]
+        np_probs /= np_probs.sum()
+        action_one_hot = np.random.multinomial(1, np_probs)
+        action_idx = np.argmax(action_one_hot)
 
-        if self.mtcar:
-          reward = s_prime[0] + 0.5
-          if s_prime[0] >= 0.5:
-            reward += 1
+        ay = action_idx // 8
+        ax = action_idx % 8
+        s_prime, reward, done = env.step((ay,ax))
 
-        rollout.append([state, probs.cpu().detach().numpy(), action, reward])
-        if self.cutearly and done:
-          break
+        rollout_p1.append([state, np_probs, action_idx, reward])
         state = s_prime
+        if done:
+          rollout_p2[-1][-1] = reward * -1
+          break
+
+        in_state = torch.FloatTensor(state).unsqueeze(0).unsqueeze(0).to(self.device)
+        probs, _ = self.policy_net(in_state)
+
+        probs = probs.cpu().detach().numpy()
+        np_probs = np.zeros(64)
+        for a in actions:
+          np_probs[a[0]*8 + a[1]] += probs[a[0]*8 + a[1]]
+        action_one_hot = np.random.multinomial(1, np_probs)
+        action_idx = np.argmax(action_one_hot)
+
+        ay = action_idx // 8
+        ax = action_idx % 8
+        s_prime, reward, done = env.step((ay,ax))
+
+        rollout_p2.append([state, np_probs, action_idx, reward])
+        state = s_prime
+        if done:
+          rollout_p1[-1][-1] = reward * -1
+          break
       # calculate returns
       value = 0.0
-      for i in reversed(range(len(rollout))):
-        value = rollout[i][-1] + self.gamma * value
-        rollout[i].append(value)
-      rollouts.append(rollout)
+      for i in reversed(range(len(rollout_p1))):
+        value = rollout_p1[i][-1] + self.gamma * value
+        rollout_p1[i].append(value)
+      rollouts.append(rollout_p1)
       gc.collect()
-
-    for p in self.policy_net.parameters():
-      p.requires_grad = True
-    return rollouts
-
-class RolloutFactory2D(object):
-  """docstring for RolloutFactory2D."""
-  def __init__(self, env, envname, policy_net, env_samples, episode_length, gamma):
-    super(RolloutFactory2D, self).__init__()
-    self.env = env
-    self.policy_net = policy_net
-    self.env_samples = env_samples
-    self.episode_length = episode_length
-    self.gamma = gamma
-    self.device = torch.device("cpu")
-    if torch.cuda.is_available():
-      self.device = torch.device("cuda")
-
-    self.avg_reward = []
-
-  def get_rollouts(self):
-    env = self.env
-    rollouts = []
-    for p in self.policy_net.parameters():
-      p.requires_grad = False
-    for _ in range(self.env_samples):
-      # don't forget to reset the environment at the beginning of each episode!
-      # rollout for a certain number of steps!
-      rollout = []
-      state = env.reset()
-      done = False
-      for i in range(self.episode_length):
-        state = torch.FloatTensor(np.rollaxis(state,2,0)).unsqueeze(0).to(self.device)
-        probs, _ = self.policy_net(state)
-        probs = probs.squeeze().cpu()
-        probs_np = probs.detach().numpy()
-        action_one_hot = np.random.multinomial(1, probs_np)
-        action = np.argmax(action_one_hot)
-        tp = [state.squeeze().cpu(), probs, torch.LongTensor([action])]
-        # next_state, reward, done, info
-        state, reward, done, _ = env.step(action)
-        tp.append(torch.FloatTensor([reward]))
-        rollout.append(tp)
-        gc.collect()
       value = 0.0
-      for i in reversed(range(len(rollout))):
-        value = rollout[i][-1] + self.gamma * value
-        rollout[i].append(value.cpu())
-      rollouts.append(rollout)
+      for i in reversed(range(len(rollout_p2))):
+        value = rollout_p2[i][-1] + self.gamma * value
+        rollout_p2[i].append(value)
+      rollouts.append(rollout_p2)
       gc.collect()
 
     for p in self.policy_net.parameters():
       p.requires_grad = True
     return rollouts
+
+if __name__ == '__main__':
+
+  net = ReversiNet()
+  factory = RolloutFactory(net, 1)
+  rolls = factory.get_rollouts()

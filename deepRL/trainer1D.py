@@ -53,10 +53,14 @@ class Trainer1D():
     hidden_size = config['model']['hidden_size']
     layer_size = config['model']['hidden_layers']
     logheat = config['model']['logheat']
+    random = 0.0
+    if 'random' in config['model']:
+      random = config['model']['random']
     self.policy_net = Policy1D(state_size, action_size,
                                 hidden_size=hidden_size,
                                 layers=layer_size,
-                                logheat=logheat)
+                                logheat=logheat,
+                                random=random)
 
     self.value_loss = nn.MSELoss()
 

@@ -11,10 +11,12 @@ import numpy as np
 class Policy1D(nn.Module):
   """docstring for Policy1D."""
   def __init__(self, state_size=4, action_size=2, hidden_size=100,
-                    layers=2, logheat=1.0):
+                    layers=2, logheat=1.0, random=0.0):
     super(Policy1D, self).__init__()
 
     self.logheat = logheat
+    self.random = random
+    self.action_size = action_size
 
     modules = []
     modules.append(nn.Linear(state_size, hidden_size))
@@ -47,6 +49,9 @@ class Policy1D(nn.Module):
     actions = np.empty((batch_size, 1), dtype=np.uint8)
     probs_np = p.cpu().detach().numpy()
     for i in range(batch_size):
+      if np.random.uniform() < self.random:
+        actions[i, 0] = np.random.randint(0, self.action_size)
+        continue
       action_one_hot = np.random.multinomial(1, probs_np[i])
       action_idx = np.argmax(action_one_hot)
       actions[i, 0] = action_idx

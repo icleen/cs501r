@@ -22,13 +22,14 @@ from model import Policy1D, Value1D
 from loss import PPOLoss
 
 
-class RLTrainer():
-  """docstring for RLTrainer."""
+class RLTester():
+  """docstring for RLTester."""
   def __init__(self, config):
     with open(config, 'r') as f:
       config = json.load(f)
 
     self.env = gym.make(config['model']['gym'])
+    self.mtcar = (config['model']['gym'] == 'MountainCar-v0')
 
     state_size = config['model']['state_size']
     action_size = config['model']['action_size']
@@ -67,10 +68,14 @@ class RLTrainer():
         adist, action = self.policy_net(state)
         adist, action = adist[0], action[0]
         state, rew, done, _ = env.step(action.item())
+        reward += rew
         if i % 50 == 0:
           print(state)
           print(adist)
-        reward += rew
+        if self.mtcar:
+          reward = state[0] + 0.5
+          if state[0] >= 0.5:
+            reward += 1
         if self.cut and done:
           break
       print('Final reward: {}'.format(reward))
@@ -105,5 +110,5 @@ if __name__ == '__main__':
     #   cont = True
 
   config = sys.argv[1]
-  trainer = RLTrainer(config)
-  trainer.run(itr=itr)
+  tester = RLTester(config)
+  tester.run(itr=itr)
