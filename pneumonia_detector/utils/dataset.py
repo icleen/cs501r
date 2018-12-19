@@ -21,6 +21,7 @@ class PneuDataset(Dataset):
 
     self.csv_file = csv_file
     self.img_path = img_path
+    self.img_resize = img_resize
     self.transform = transforms.Compose([transforms.Resize(img_resize),transforms.ToTensor()])
 
 
@@ -33,13 +34,28 @@ class PneuDataset(Dataset):
     item = self.data[idx]
     path = os.path.join(self.img_path, item[0] + '.dcm')
     img = pydicom.dcmread(path).pixel_array.astype(np.uint8)
+    size = img.shape
     img = Image.fromarray(img)
     img = self.transform(img)
     # import pdb; pdb.set_trace()
 
+    label = int(item[5])
+    if label != 0:
+      x = (float(item[1]) / size[1]) * self.img_resize
+      x = torch.tensor(x).float()
+      y = (float(item[2]) / size[0]) * self.img_resize
+      y = torch.tensor(y).float()
+      w = (float(item[3]) / size[1]) * self.img_resize
+      w = torch.tensor(w).float()
+      h = (float(item[4]) / size[0]) * self.img_resize
+      h = torch.tensor(h).float()
+    else:
+      x = torch.tensor(0).float()
+      y = torch.tensor(0).float()
+      w = torch.tensor(0).float()
+      h = torch.tensor(0).float()
     label = torch.tensor(int(item[5])).long()
-
-    return img, label
+    return img, x, y, w, h, label
 
     # return {
     # 'img': img,

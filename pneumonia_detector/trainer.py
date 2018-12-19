@@ -12,7 +12,8 @@ import gc
 import numpy as np
 
 from utils.dataset import PneuDataset
-from model import PneuNet
+from yolo_model import PneuYoloNet
+from loss import YoloLoss
 
 
 class Trainer(object):
@@ -24,10 +25,12 @@ class Trainer(object):
 
     self.iterations = config['train']['iterations']
 
-    self.model = PneuNet(config['model']['img_shape'],
-                        config['model']['classes'])
+    # self.model = PneuNet(config['model']['img_shape'],
+    #                     config['model']['classes'])
+    # self.objective = nn.CrossEntropyLoss()
 
-    self.objective = nn.CrossEntropyLoss()
+    self.model = PneuYoloNet(config['model']['img_shape'])
+    self.objective = YoloLoss(config['model']['img_shape'][1])
 
     lr = config['train']['learning_rate']
     self.optimizer = optim.SGD(self.model.parameters(), lr=lr)
@@ -64,12 +67,13 @@ class Trainer(object):
 
   def train(self, itr):
     while itr < self.iterations:
-      for j, (x, y) in enumerate(self.trainloader):
+      for j, (img, x, y, w, h, label) in enumerate(self.trainloader):
         if torch.cuda.is_available():
-          x, y = x.cuda(async=True), y.cuda(async=True)
+          img, x, y = img.cuda(async=True), x.cuda(async=True), y.cuda(async=True)
+          w, h, label = w.cuda(async=True), h.cuda(async=True), label.cuda(async=True)
 
         preds = self.model(x)
-        loss = self.objective(preds, y)
+        loss = self.objective(preds, (x, y, w, h, label))
         self.losses.append(loss.cpu().item())
 
         self.optimizer.zero_grad()
