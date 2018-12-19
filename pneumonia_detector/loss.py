@@ -14,7 +14,7 @@ class YoloLoss(nn.Module):
 
   def forward(self, preds, targets):
     pc, px, py, pw, ph = preds
-    pc, px, py, pw, ph = pc.cpu(), px.cpu(), py.cpu(), pw.cpu(), ph.cpu()
+    #pc, px, py, pw, ph = pc.cpu(), px.cpu(), py.cpu(), pw.cpu(), ph.cpu()
     sx = float(self.img_size) / pc.size(2)
     sy = float(self.img_size) / pc.size(1)
 
@@ -32,6 +32,13 @@ class YoloLoss(nn.Module):
     tlocs = torch.zeros(confs.size())
     tlocs[range(confs.size(0)),x,y] = 1
     tlocs[:,0,0] = 0
+    
+    if torch.cuda.is_available():
+      tx = tx.cuda()
+      ty = ty.cuda()
+      tw = tw.cuda()
+      th = th.cuda()
+      tlocs = tlocs.cuda()
 
     # confidence loss
     dif = torch.pow(tlocs - confs, 2).float() * self.noobj
