@@ -100,7 +100,7 @@ class Trainer(object):
               y.cuda(async=True)).cpu().item()
               for (x, y) in self.valloader]
 
-    return [self.objective(self.model(x), y).cpu().item()
+    return [self.objective(self.model(x), y).item()
               for (x, y) in self.valloader]
 
   def read_in(self, itr=None):
@@ -137,7 +137,7 @@ class Trainer(object):
       print('continuing')
       self.train(itr)
     else:
-      self.train()
+      self.train(0)
 
 def main():
   if len(sys.argv) < 2:
