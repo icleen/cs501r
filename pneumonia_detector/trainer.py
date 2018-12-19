@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 import json
 import gc
 import numpy as np
+import matplotlib.pyplot as plt
 
 from utils.dataset import PneuDataset
 from yolo_model import PneuYoloNet
@@ -18,7 +19,7 @@ from loss import YoloLoss
 
 class Trainer(object):
   """docstring for Trainer."""
-  def __init__(self, config):
+  def __init__(self, config, dev='0'):
     super(Trainer, self).__init__()
     with open(config, 'r') as f:
       config = json.load(f)
@@ -39,6 +40,7 @@ class Trainer(object):
     self.vallosses = []
 
     if torch.cuda.is_available():
+      torch.cuda.set_device(int(dev))
       self.model.cuda()
       self.dtype = torch.cuda.FloatTensor
       print("Using GPU")
@@ -56,7 +58,7 @@ class Trainer(object):
     valset = PneuDataset(config['data']['valid'],
                          config['data']['image_path'],
                          config['model']['img_shape'][1])
-    self.valloader = DataLoader(valset, batch_size=1, pin_memory=True)
+    self.valloader = DataLoader(valset, batch_size=batch_size, pin_memory=True)
 
     self.write_interval = config['model']['write_interval']
     self.train_info_path = config['model']['train_info_path']
@@ -73,6 +75,7 @@ class Trainer(object):
           # x, y = x.cuda(async=True), y.cuda(async=True)
           # w, h, label = w.cuda(async=True), h.cuda(async=True), label.cuda(async=True)
 
+        print(itr)
         preds = self.model(img)
         loss = self.objective(preds, (x, y, w, h, label))
         self.losses.append(loss.cpu().item())
@@ -97,11 +100,14 @@ class Trainer(object):
 
   def validate(self):
     if torch.cuda.is_available():
-      return [self.objective(
-              self.model(img.cuda(async=True)),
-(x.cuda(async=True), y.cuda(async=True), w.cuda(async=True), h.cuda(async=True), label.cuda(async=True))
-            ).cpu().item()
+      return [self.objective(self.model(img.cuda(async=True)), (x, y, w, h, label)).item()
               for (img, x, y, w, h, label) in self.valloader]
+ #     return [self.objective(
+ #            self.model(img.cuda(async=True)),
+#(x.cuda(async=True), y.cuda(async=True), w.cuda(async=True), h.cuda(async=True), label.cuda(async=True))
+ #           ).cpu().item()
+ #             for (img, x, y, w, h, label) in self.valloader]
+    
 
     return [self.objective(self.model(img), (x, y, w, h, label)).item()
               for (img, x, y, w, h, label) in self.valloader]
@@ -131,6 +137,15 @@ class Trainer(object):
 
     torch.save( self.model.state_dict(),
       str(self.model_path + '_' + str(itr) + '.pt') )
+      
+    plt.plot(self.losses, label='train loss')
+    plt.plot(self.vallosses, label='validation loss')
+    plt.legend()
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.savefig(str(self.graph_path + '_loss.png'))
+    plt.clf()
+
 
   def run(self, cont=False):
     # check to see if we should continue from an existing checkpoint
@@ -148,13 +163,22 @@ def main():
     exit(0)
 
   cont = False
+  dev = '0'
   if len(sys.argv) > 2:
     info = sys.argv[2]
     if info == 'cont':
       cont = True
+    elif info == '1':
+      dev = info
+    elif info == '2':
+      dev = info
+    elif info == '3':
+      dev = info
+  elif len(sys.argv) > 3:
+    dev = sys.argv[3]
 
   config = sys.argv[1]
-  trainer = Trainer(config)
+  trainer = Trainer(config, dev=dev)
   trainer.run(cont=cont)
 
 if __name__ == '__main__':
