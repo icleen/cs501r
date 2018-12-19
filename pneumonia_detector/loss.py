@@ -13,10 +13,10 @@ class YoloLoss(nn.Module):
 
 
   def forward(self, preds, targets):
-    preds = preds.cpu()
-    size = preds.size()
-    sx = float(self.img_size) / size[3]
-    sy = float(self.img_size) / size[2]
+    pc, px, py, pw, ph = preds
+    pc, px, py, pw, ph = pc.cpu(), px.cpu(), py.cpu(), pw.cpu(), ph.cpu()
+    sx = float(self.img_size) / pc.size(2)
+    sy = float(self.img_size) / pc.size(1)
 
     x, y, w, h, label = targets
     tx = ((x % sx) / sx) - 0.5
@@ -28,7 +28,7 @@ class YoloLoss(nn.Module):
     tw = w / sx
     th = h / sy
 
-    confs = preds[:,0,:,:]
+    confs = pc
     tlocs = torch.zeros(confs.size())
     tlocs[range(confs.size(0)),x,y] = 1
     tlocs[:,0,0] = 0
@@ -37,18 +37,21 @@ class YoloLoss(nn.Module):
     dif = torch.pow(tlocs - confs, 2).float() * self.noobj
     dif[range(confs.size(0)),x,y] /= self.noobj
     loss = torch.sum(dif)
+    #print(loss)
 
     # location loss
-    px = torch.sum(torch.sum((preds[:,1,:,:] * tlocs), dim=-1), dim=-1)
-    py = torch.sum(torch.sum((preds[:,2,:,:] * tlocs), dim=-1), dim=-1)
-    pw = torch.sum(torch.sum((preds[:,3,:,:] * tlocs), dim=-1), dim=-1)
-    ph = torch.sum(torch.sum((preds[:,4,:,:] * tlocs), dim=-1), dim=-1)
+    px = torch.sum(torch.sum((px * tlocs), dim=-1), dim=-1)
+    py = torch.sum(torch.sum((py * tlocs), dim=-1), dim=-1)
+    pw = torch.sum(torch.sum((pw * tlocs), dim=-1), dim=-1)
+    ph = torch.sum(torch.sum((ph * tlocs), dim=-1), dim=-1)
 
     loss += torch.sum(torch.pow((tx - px), 2)) * self.coord
     loss += torch.sum(torch.pow((ty - py), 2)) * self.coord
+    #print(1,loss)
     loss += torch.sum(torch.pow((torch.sqrt(tw) - torch.sqrt(pw)), 2)) * self.coord
     loss += torch.sum(torch.pow((torch.sqrt(th) - torch.sqrt(ph)), 2)) * self.coord
-
+    #print(2,loss)
+    #input('waiting...')
     return loss
 
 

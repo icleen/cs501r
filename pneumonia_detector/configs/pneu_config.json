@@ -10,7 +10,7 @@
     "model_save_path": "models/pneu_model_save.pt",
     "train_info_path": "logs/pneu_log.pt",
     "graph_save_path": "visuals/pneu_graph.png",
-    "write_interval": 5
+    "write_interval": 25
   },
   "data": {
     "image_path": "/fslhome/iclee141/compute/pneu_data/train_images/",

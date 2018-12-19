@@ -75,10 +75,11 @@ class Trainer(object):
           # x, y = x.cuda(async=True), y.cuda(async=True)
           # w, h, label = w.cuda(async=True), h.cuda(async=True), label.cuda(async=True)
 
-        print(itr)
+        #print(itr)
         preds = self.model(img)
         loss = self.objective(preds, (x, y, w, h, label))
         self.losses.append(loss.cpu().item())
+        #print(loss)
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -89,6 +90,7 @@ class Trainer(object):
 
         itr += 1
         if itr % self.write_interval == 0:
+          print('validating...')
           valloss = np.mean(self.validate())
           print( 'iter: {}, trainloss: {}, valloss: {}'.format( itr,
             np.mean(self.losses[-self.write_interval:]),

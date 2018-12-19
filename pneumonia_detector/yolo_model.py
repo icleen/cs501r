@@ -36,14 +36,18 @@ class PneuYoloNet(nn.Module):
     right shape defined above"""
     self.conv = nn.Conv2d(resout_channels, out_channels,
                           kernel_size=1, stride=1, padding=0)
+                          
+    self.sig = nn.Sigmoid()
+    self.relu = nn.ReLU()
 
 
   def forward(self, x):
     out = self.resnet(x)
     out = self.conv(out)
     out.transpose(1,2)
-    # size = out.size()
-    # print(size)
-    # out = out.reshape(-1, size[0], size[1]*size[2])
-    # out = out.transpose(1,2)
-    return out
+    pc = out[:,0,:,:]
+    px = self.sig(out[:,1,:,:]) - 0.5
+    py = self.sig(out[:,2,:,:]) - 0.5
+    pw = self.relu(out[:,3,:,:])
+    ph = self.relu(out[:,4,:,:])
+    return (pc, px, py, pw, ph)
