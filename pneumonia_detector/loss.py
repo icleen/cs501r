@@ -11,36 +11,30 @@ class YoloLoss(nn.Module):
     self.coord = coord
     self.sig = nn.Sigmoid()
 
-    if torch.cuda.is_available():
-      self.dtype = torch.cuda.FloatTensor
-      self.long = torch.cuda.LongTensor
-    else:
-      self.dtype = torch.FloatTensor
-      self.long = torch.LongTensor
-
 
   def forward(self, preds, targets):
+    preds = preds.cpu()
     size = preds.size()
     sx = float(self.img_size) / size[3]
     sy = float(self.img_size) / size[2]
 
     x, y, w, h, label = targets
     tx = ((x % sx) / sx) - 0.5
-    tx = tx * label.dtype(self.dtype)
-    x = x.dtype(self.long) / sx
+    tx = tx * label.float()
+    x = x.long() / sx
     ty = ((y % sy) / sy) - 0.5
-    ty = ty * label.dtype(self.dtype)
-    y = y.dtype(self.long) / sy
+    ty = ty * label.float()
+    y = y.long() / sy
     tw = w / sx
     th = h / sy
 
     confs = preds[:,0,:,:]
-    tlocs = torch.zeros(confs.size()).dtype(self.dtype)
+    tlocs = torch.zeros(confs.size())
     tlocs[range(confs.size(0)),x,y] = 1
     tlocs[:,0,0] = 0
 
     # confidence loss
-    dif = torch.pow(tlocs - confs, 2).dtype(self.dtype) * self.noobj
+    dif = torch.pow(tlocs - confs, 2).float() * self.noobj
     dif[range(confs.size(0)),x,y] /= self.noobj
     loss = torch.sum(dif)
 
