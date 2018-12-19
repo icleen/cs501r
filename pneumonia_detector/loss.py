@@ -29,6 +29,8 @@ class YoloLoss(nn.Module):
 
     confs = preds[:,0,:,:]
     tlocs = torch.zeros(confs.size())
+    if torch.cuda.is_available():
+      tlocs.cuda()
     tlocs[range(confs.size(0)),x,y] = 1
     tlocs[:,0,0] = 0
 
