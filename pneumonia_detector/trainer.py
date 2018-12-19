@@ -72,7 +72,7 @@ class Trainer(object):
           img, x, y = img.cuda(async=True), x.cuda(async=True), y.cuda(async=True)
           w, h, label = w.cuda(async=True), h.cuda(async=True), label.cuda(async=True)
 
-        preds = self.model(x)
+        preds = self.model(img)
         loss = self.objective(preds, (x, y, w, h, label))
         self.losses.append(loss.cpu().item())
 
@@ -96,12 +96,14 @@ class Trainer(object):
 
   def validate(self):
     if torch.cuda.is_available():
-      return [self.objective(self.model(x.cuda(async=True)),
-              y.cuda(async=True)).cpu().item()
-              for (x, y) in self.valloader]
+      return [self.objective(
+              self.model(img.cuda(async=True)),
+(x.cuda(async=True), y.cuda(async=True), w.cuda(async=True), h.cuda(async=True), label.cuda(async=True))
+            ).cpu().item()
+              for (img, x, y, w, h, label) in self.valloader]
 
-    return [self.objective(self.model(x), y).item()
-              for (x, y) in self.valloader]
+    return [self.objective(self.model(img), (x, y, w, h, label)).item()
+              for (img, x, y, w, h, label) in self.valloader]
 
   def read_in(self, itr=None):
     train_info = {}
