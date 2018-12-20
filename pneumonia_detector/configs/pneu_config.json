@@ -5,12 +5,13 @@
     "batch_size": 20
   },
   "model": {
-    "img_shape": [1, 512, 512],
-    "classes": 2,
+    "yolo_path": "configs/yolov3.cfg",
+    "img_shape": [1, 416, 416],
+    "classes": 1,
     "model_save_path": "models/pneu_model_save.pt",
     "train_info_path": "logs/pneu_log.pt",
     "graph_save_path": "visuals/pneu_graph.png",
-    "write_interval": 25
+    "write_interval": 50
   },
   "data": {
     "image_path": "/fslhome/iclee141/compute/pneu_data/train_images/",

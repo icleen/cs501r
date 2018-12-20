@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torch.autograd import Variable
 
 import json
 import gc
@@ -13,9 +14,13 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils.dataset import PneuDataset
+from utils.dataset import PneuDataset, PneuYoloDataset
 from yolo_model import PneuYoloNet
 from loss import YoloLoss
+
+from models import *
+from utils.utils import *
+from utils.parse_config import *
 
 
 class Trainer(object):
@@ -31,32 +36,36 @@ class Trainer(object):
     #                     config['model']['classes'])
     # self.objective = nn.CrossEntropyLoss()
 
-    self.model = PneuYoloNet(config['model']['img_shape'])
-    self.objective = YoloLoss(config['model']['img_shape'][1])
+    # self.model = PneuYoloNet(config['model']['img_shape'])
+    # self.objective = YoloLoss(config['model']['img_shape'][1])
+
+    self.model = Darknet(config['model']['yolo_path'],
+                        img_size=config['model']['img_shape'][1])
+    self.model.apply(weights_init_normal)
 
     lr = config['train']['learning_rate']
-    self.optimizer = optim.SGD(self.model.parameters(), lr=lr)
+    self.optimizer = optim.SGD(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr)
 
     self.losses = []
     self.vallosses = []
 
+    self.dtype = torch.FloatTensor
     if torch.cuda.is_available():
       torch.cuda.set_device(int(dev))
       self.model.cuda()
       self.dtype = torch.cuda.FloatTensor
       print("Using GPU")
     else:
-      self.dtype = torch.FloatTensor
       print("No GPU detected")
 
     batch_size = config['train']['batch_size']
-    trainset = PneuDataset(config['data']['train'],
+    trainset = PneuYoloDataset(config['data']['train'],
                            config['data']['image_path'],
                            config['model']['img_shape'][1])
     self.trainloader = DataLoader(trainset,
                                   batch_size=batch_size,
                                   pin_memory=True)
-    self.valset = PneuDataset(config['data']['valid'],
+    self.valset = PneuYoloDataset(config['data']['valid'],
                          config['data']['image_path'],
                          config['model']['img_shape'][1])
     self.valloader = DataLoader(self.valset, batch_size=batch_size, pin_memory=True)
@@ -69,16 +78,21 @@ class Trainer(object):
     # print(torch.cuda.memory_allocated(0) / 1e9)
 
   def train(self, itr):
+    self.model.train()
     while itr < self.iterations:
-      for j, (img, x, y, w, h, label) in enumerate(self.trainloader):
-        if torch.cuda.is_available():
-          img = img.cuda(async=True)
+      for j, (_, imgs, targets) in enumerate(self.trainloader):
+        # if torch.cuda.is_available():
+        #   img = img.cuda(async=True)
+        #   targets = targets.cuda(async=True)
           # x, y = x.cuda(async=True), y.cuda(async=True)
           # w, h, label = w.cuda(async=True), h.cuda(async=True), label.cuda(async=True)
-
+        imgs = Variable(imgs.type(self.dtype))
+        targets = Variable(targets.type(self.dtype), requires_grad=False)
         print(itr)
-        preds = self.model(img)
-        loss = self.objective(preds, (x, y, w, h, label))
+        # import pdb; pdb.set_trace()
+        # preds = self.model(img)
+        # loss = self.objective(preds, targets)
+        loss = self.model(imgs, targets)
         self.losses.append(loss.cpu().item())
         print(loss)
 
@@ -91,6 +105,7 @@ class Trainer(object):
 
         itr += 1
         if itr % self.write_interval == 0:
+          self.model.eval()
           print('validating...')
           valloss = np.mean(self.validate())
           print( 'iter: {}, trainloss: {}, valloss: {}'.format( itr,
@@ -98,6 +113,7 @@ class Trainer(object):
             valloss ) )
           self.vallosses.append(valloss)
           self.write_out(itr)
+          self.model.train()
 
         gc.collect()
 
@@ -108,28 +124,28 @@ class Trainer(object):
     return [self.objective(self.model(img), (x, y, w, h, label)).item()
               for (img, x, y, w, h, label) in self.valloader]
 
-  def sample_img(self):
-    if torch.cuda.is_available():
-      i = random.uniform(0,len(self.valset)-1)
-      img, x, y, w, h, label = self.valset[i]
-      inp = img.cuda(async=True).unsqueeze(0)
-      img = self.valset.get_image(i)
-      preds = self.model(inp)
-      pc, px, py, pw, ph = preds
-      pc, px, py, pw, ph = pc.cpu(), px.cpu(), py.cpu(), pw.cpu(), ph.cpu()
-
-      x, y, w, h = x.item(), y.item(), w.item(), h.item()
-      xl = x - (w/2)
-      yl = y - (h/2)
-      xr = x + (w/2)
-      yr = y + (h/2)
-
-      torch.argmax(pc)
-      pxl =
-
-      draw = ImageDraw.Draw(img)
-      draw.rectangle(xl, yl, xr, yr)
-      draw.rectangle(pxl, pyl, pxr, pyr)
+  # def sample_img(self):
+  #   if torch.cuda.is_available():
+  #     i = random.uniform(0,len(self.valset)-1)
+  #     img, x, y, w, h, label = self.valset[i]
+  #     inp = img.cuda(async=True).unsqueeze(0)
+  #     img = self.valset.get_image(i)
+  #     preds = self.model(inp)
+  #     pc, px, py, pw, ph = preds
+  #     pc, px, py, pw, ph = pc.cpu(), px.cpu(), py.cpu(), pw.cpu(), ph.cpu()
+  #
+  #     x, y, w, h = x.item(), y.item(), w.item(), h.item()
+  #     xl = x - (w/2)
+  #     yl = y - (h/2)
+  #     xr = x + (w/2)
+  #     yr = y + (h/2)
+  #
+  #     torch.argmax(pc)
+  #     pxl =
+  #
+  #     draw = ImageDraw.Draw(img)
+  #     draw.rectangle(xl, yl, xr, yr)
+  #     draw.rectangle(pxl, pyl, pxr, pyr)
 
 
   def read_in(self, itr=None):
