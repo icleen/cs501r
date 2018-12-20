@@ -24,7 +24,13 @@ class PneuDataset(Dataset):
     self.img_resize = img_resize
     self.transform = transforms.Compose([transforms.Resize(img_resize),transforms.ToTensor()])
 
-
+  def get_image(self, idx):
+    item = self.data[idx]
+    path = os.path.join(self.img_path, item[0] + '.dcm')
+    img = pydicom.dcmread(path).pixel_array.astype(np.uint8)
+    size = img.shape
+    img = Image.fromarray(img)
+    return img
 
   def __len__(self):
     return  len(self.data)
@@ -32,11 +38,10 @@ class PneuDataset(Dataset):
   def __getitem__(self, idx):
     # item = self.data[0] # test with only the first instance
     item = self.data[idx]
-    path = os.path.join(self.img_path, item[0] + '.dcm')
-    img = pydicom.dcmread(path).pixel_array.astype(np.uint8)
-    size = img.shape
-    img = Image.fromarray(img)
+    img = self.get_image(idx)
     img = self.transform(img)
+    img -= 128.0
+    img /= 128.0
     # import pdb; pdb.set_trace()
 
     label = int(item[5])

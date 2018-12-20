@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 
 import json
 import gc
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -55,10 +56,10 @@ class Trainer(object):
     self.trainloader = DataLoader(trainset,
                                   batch_size=batch_size,
                                   pin_memory=True)
-    valset = PneuDataset(config['data']['valid'],
+    self.valset = PneuDataset(config['data']['valid'],
                          config['data']['image_path'],
                          config['model']['img_shape'][1])
-    self.valloader = DataLoader(valset, batch_size=batch_size, pin_memory=True)
+    self.valloader = DataLoader(self.valset, batch_size=batch_size, pin_memory=True)
 
     self.write_interval = config['model']['write_interval']
     self.train_info_path = config['model']['train_info_path']
@@ -104,15 +105,32 @@ class Trainer(object):
     if torch.cuda.is_available():
       return [self.objective(self.model(img.cuda(async=True)), (x, y, w, h, label)).item()
               for (img, x, y, w, h, label) in self.valloader]
- #     return [self.objective(
- #            self.model(img.cuda(async=True)),
-#(x.cuda(async=True), y.cuda(async=True), w.cuda(async=True), h.cuda(async=True), label.cuda(async=True))
- #           ).cpu().item()
- #             for (img, x, y, w, h, label) in self.valloader]
-    
-
     return [self.objective(self.model(img), (x, y, w, h, label)).item()
               for (img, x, y, w, h, label) in self.valloader]
+
+  def sample_img(self):
+    if torch.cuda.is_available():
+      i = random.uniform(0,len(self.valset)-1)
+      img, x, y, w, h, label = self.valset[i]
+      inp = img.cuda(async=True).unsqueeze(0)
+      img = self.valset.get_image(i)
+      preds = self.model(inp)
+      pc, px, py, pw, ph = preds
+      pc, px, py, pw, ph = pc.cpu(), px.cpu(), py.cpu(), pw.cpu(), ph.cpu()
+
+      x, y, w, h = x.item(), y.item(), w.item(), h.item()
+      xl = x - (w/2)
+      yl = y - (h/2)
+      xr = x + (w/2)
+      yr = y + (h/2)
+
+      torch.argmax(pc)
+      pxl =
+
+      draw = ImageDraw.Draw(img)
+      draw.rectangle(xl, yl, xr, yr)
+      draw.rectangle(pxl, pyl, pxr, pyr)
+
 
   def read_in(self, itr=None):
     train_info = {}
@@ -139,7 +157,7 @@ class Trainer(object):
 
     torch.save( self.model.state_dict(),
       str(self.model_path + '_' + str(itr) + '.pt') )
-      
+
     plt.plot(self.losses, label='train loss')
     plt.plot(self.vallosses, label='validation loss')
     plt.legend()
