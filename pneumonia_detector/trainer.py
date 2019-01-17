@@ -124,28 +124,28 @@ class Trainer(object):
     return [self.objective(self.model(img), (x, y, w, h, label)).item()
               for (img, x, y, w, h, label) in self.valloader]
 
-  # def sample_img(self):
-  #   if torch.cuda.is_available():
-  #     i = random.uniform(0,len(self.valset)-1)
-  #     img, x, y, w, h, label = self.valset[i]
-  #     inp = img.cuda(async=True).unsqueeze(0)
-  #     img = self.valset.get_image(i)
-  #     preds = self.model(inp)
-  #     pc, px, py, pw, ph = preds
-  #     pc, px, py, pw, ph = pc.cpu(), px.cpu(), py.cpu(), pw.cpu(), ph.cpu()
-  #
-  #     x, y, w, h = x.item(), y.item(), w.item(), h.item()
-  #     xl = x - (w/2)
-  #     yl = y - (h/2)
-  #     xr = x + (w/2)
-  #     yr = y + (h/2)
-  #
-  #     torch.argmax(pc)
-  #     pxl =
-  #
-  #     draw = ImageDraw.Draw(img)
-  #     draw.rectangle(xl, yl, xr, yr)
-  #     draw.rectangle(pxl, pyl, pxr, pyr)
+  def sample_img(self):
+    if torch.cuda.is_available():
+      i = random.uniform(0,len(self.valset)-1)
+      img, x, y, w, h, label = self.valset[i]
+      inp = img.cuda(async=True).unsqueeze(0)
+      img = self.valset.get_image(i)
+      preds = self.model(inp)
+      pc, px, py, pw, ph = preds
+      pc, px, py, pw, ph = pc.cpu(), px.cpu(), py.cpu(), pw.cpu(), ph.cpu()
+
+      x, y, w, h = x.item(), y.item(), w.item(), h.item()
+      xl = x - (w/2)
+      yl = y - (h/2)
+      xr = x + (w/2)
+      yr = y + (h/2)
+
+      torch.argmax(pc)
+      pxl =
+
+      draw = ImageDraw.Draw(img)
+      draw.rectangle(xl, yl, xr, yr)
+      draw.rectangle(pxl, pyl, pxr, pyr)
 
 
   def read_in(self, itr=None):

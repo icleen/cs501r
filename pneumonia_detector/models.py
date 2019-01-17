@@ -193,10 +193,10 @@ class YOLOLayer(nn.Module):
             conf_mask_false = conf_mask - mask
 
             # Mask outputs to ignore non-existing objects
-            loss_x = torch.tensor(0).float()
-            loss_y = torch.tensor(0).float()
-            loss_w = torch.tensor(0).float()
-            loss_h = torch.tensor(0).float()
+            loss_x = torch.tensor(0).type(FloatTensor)
+            loss_y = torch.tensor(0).type(FloatTensor)
+            loss_w = torch.tensor(0).type(FloatTensor)
+            loss_h = torch.tensor(0).type(FloatTensor)
             loss_conf = self.bce_loss(pred_conf[conf_mask_false], tconf[conf_mask_false])
             if torch.sum(conf_mask_true) > 0:
                 loss_x = self.mse_loss(x[mask], tx[mask])
@@ -228,7 +228,7 @@ class YOLOLayer(nn.Module):
                 (
                     pred_boxes.view(nB, -1, 4) * stride,
                     pred_conf.view(nB, -1, 1),
-                    pred_cls.view(nB, -1, self.num_classes),
+                    # pred_cls.view(nB, -1, self.num_classes),
                 ),
                 -1,
             )
